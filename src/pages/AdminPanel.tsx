@@ -295,6 +295,15 @@ export function AdminPanel() {
   const handlePriceUpdate = (e: React.FormEvent) => {
     e.preventDefault();
     updatePrices(priceForm);
+    
+    // Show immediate feedback
+    const updatedElements = document.querySelectorAll('[data-price-sync]');
+    updatedElements.forEach(el => {
+      el.classList.add('animate-pulse', 'ring-2', 'ring-green-400');
+      setTimeout(() => {
+        el.classList.remove('animate-pulse', 'ring-2', 'ring-green-400');
+      }, 2000);
+    });
   };
 
   const handleAddZone = (e: React.FormEvent) => {
@@ -429,6 +438,18 @@ export function AdminPanel() {
         </h3>
       </div>
       <form onSubmit={handlePriceUpdate} className="p-6 space-y-6">
+        <div className="bg-blue-50 rounded-xl p-4 mb-6 border border-blue-200">
+          <div className="flex items-center mb-2">
+            <div className="bg-blue-100 p-2 rounded-lg mr-3">
+              <span className="text-sm">⚡</span>
+            </div>
+            <h4 className="font-semibold text-blue-900">Sincronización en Tiempo Real</h4>
+          </div>
+          <p className="text-sm text-blue-700 ml-11">
+            Los cambios se aplicarán inmediatamente en toda la aplicación al guardar
+          </p>
+        </div>
+        
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -460,17 +481,26 @@ export function AdminPanel() {
           
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Recargo por Transferencia (%)
+              Recargo por Transferencia (%) - Sincronización Automática
             </label>
+            <div className="bg-orange-50 rounded-lg p-3 mb-2 border border-orange-200">
+              <p className="text-xs text-orange-700">
+                ⚡ Este porcentaje se aplicará automáticamente en toda la app: carrito, checkout, novelas y cálculos de precios
+              </p>
+            </div>
             <input
               type="number"
               value={priceForm.transferFeePercentage}
               onChange={(e) => setPriceForm({ ...priceForm, transferFeePercentage: parseInt(e.target.value) })}
-              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+              data-price-sync
               min="0"
               max="100"
               required
             />
+            <div className="mt-2 text-xs text-gray-600">
+              Valor actual: {priceForm.transferFeePercentage}% • Se aplicará en: Carrito, Checkout, Novelas
+            </div>
           </div>
           
           <div>
@@ -490,11 +520,25 @@ export function AdminPanel() {
         
         <button
           type="submit"
-          className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-bold py-3 px-6 rounded-xl transition-all duration-300 transform hover:scale-105 hover:shadow-lg flex items-center justify-center space-x-2"
+          className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-bold py-4 px-6 rounded-xl transition-all duration-300 transform hover:scale-105 hover:shadow-lg flex items-center justify-center space-x-2"
         >
-          <Save className="h-5 w-5" />
-          <span>Guardar Precios</span>
+          <div className="bg-white/20 p-2 rounded-lg">
+            <Save className="h-5 w-5" />
+          </div>
+          <div className="text-left">
+            <div className="text-lg">Guardar y Sincronizar Precios</div>
+            <div className="text-sm opacity-90">Aplicar cambios en tiempo real</div>
+          </div>
         </button>
+        
+        <div className="bg-gradient-to-r from-green-50 to-blue-50 rounded-xl p-4 border border-green-200">
+          <div className="flex items-center justify-center text-sm text-green-700">
+            <span className="mr-2">⚡</span>
+            <span className="font-medium">
+              Los cambios se sincronizarán automáticamente en: PriceCard, CartContext, CheckoutModal, NovelasModal y Cart
+            </span>
+          </div>
+        </div>
       </form>
     </div>
   );

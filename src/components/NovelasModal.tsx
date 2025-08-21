@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Download, MessageCircle, Phone, BookOpen, Info, Check, DollarSign, CreditCard, Calculator, Search, Filter, SortAsc, SortDesc } from 'lucide-react';
-import { useAdmin, AdminContext } from '../context/AdminContext';
+import { AdminContext } from '../context/AdminContext';
 
 interface Novela {
   id: number;
@@ -24,8 +24,10 @@ export function NovelasModal({ isOpen, onClose }: NovelasModalProps) {
     novelPricePerChapter: 5,
     transferFeePercentage: 10
   });
-  const [lastNovelUpdate, setLastNovelUpdate] = useState<string | null>(null);
-  const [lastPriceUpdate, setLastPriceUpdate] = useState<string | null>(null);
+  const [lastNovelUpdate, setLastNovelUpdate] = React.useState<string | null>(null);
+  const [lastPriceUpdate, setLastPriceUpdate] = React.useState<string | null>(null);
+  const [isNovelUpdating, setIsNovelUpdating] = React.useState(false);
+  const [isPriceUpdating, setIsPriceUpdating] = React.useState(false);
   const [selectedNovelas, setSelectedNovelas] = useState<number[]>([]);
   const [novelasWithPayment, setNovelasWithPayment] = useState<Novela[]>([]);
   const [showContactOptions, setShowContactOptions] = useState(false);
@@ -38,10 +40,12 @@ export function NovelasModal({ isOpen, onClose }: NovelasModalProps) {
 
   // Real-time sync listeners
   useEffect(() => {
-    const handleNovelUpdate = (event: CustomEvent) => {
-      const novels = event.detail;
+    const handleNovelUpdate = (event: any) => {
+      const { novels, timestamp } = event.detail;
+      
+      setIsNovelUpdating(true);
       setCurrentNovels(novels);
-      setLastNovelUpdate(new Date().toISOString());
+      setLastNovelUpdate(timestamp);
       
       // Update novels with payment types
       const novelasWithDefaultPayment = [...defaultNovelas, ...novels.map((novel: any) => ({
@@ -56,23 +60,29 @@ export function NovelasModal({ isOpen, onClose }: NovelasModalProps) {
         paymentType: 'cash' as const
       }));
       setNovelasWithPayment(novelasWithDefaultPayment);
+      
+      setTimeout(() => setIsNovelUpdating(false), 1000);
     };
     
-    const handlePriceUpdate = (event: CustomEvent) => {
+    const handlePriceUpdate = (event: any) => {
       const { prices, timestamp } = event.detail;
+      
+      setIsPriceUpdating(true);
       setCurrentPrices({
         novelPricePerChapter: prices.novelPricePerChapter,
         transferFeePercentage: prices.transferFeePercentage
       });
       setLastPriceUpdate(timestamp);
+      
+      setTimeout(() => setIsPriceUpdating(false), 1000);
     };
     
-    window.addEventListener('novelUpdate', handleNovelUpdate as EventListener);
-    window.addEventListener('adminPriceUpdate', handlePriceUpdate as EventListener);
+    window.addEventListener('adminNovelUpdate', handleNovelUpdate);
+    window.addEventListener('adminPriceUpdate', handlePriceUpdate);
     
     return () => {
-      window.removeEventListener('novelUpdate', handleNovelUpdate as EventListener);
-      window.removeEventListener('adminPriceUpdate', handlePriceUpdate as EventListener);
+      window.removeEventListener('adminNovelUpdate', handleNovelUpdate);
+      window.removeEventListener('adminPriceUpdate', handlePriceUpdate);
     };
   }, []);
   // Get novels and prices from admin context if available
@@ -439,9 +449,13 @@ export function NovelasModal({ isOpen, onClose }: NovelasModalProps) {
       <div className="bg-white rounded-2xl w-full max-w-6xl max-h-[95vh] overflow-hidden shadow-2xl animate-in fade-in duration-300">
         {/* Header */}
         <div className="bg-gradient-to-r from-pink-600 to-purple-600 p-4 sm:p-6 text-white relative">
-          {(lastNovelUpdate || lastPriceUpdate) && (
-            <div className="absolute top-2 right-16 bg-green-500 text-white text-xs px-3 py-1 rounded-full animate-pulse">
-              Sincronizado
+          {(isNovelUpdating || isPriceUpdating || lastNovelUpdate || lastPriceUpdate) && (
+            <div className={`absolute top-2 right-16 text-white text-xs px-3 py-1 rounded-full ${
+              isNovelUpdating || isPriceUpdating 
+                ? 'bg-blue-500 animate-bounce' 
+                : 'bg-green-500 animate-pulse'
+            }`}>
+              {isNovelUpdating || isPriceUpdating ? '🔄 Actualizando...' : '✅ Sincronizado'}
             </div>
           )}
           <div className="flex items-center justify-between">
@@ -453,9 +467,12 @@ export function NovelasModal({ isOpen, onClose }: NovelasModalProps) {
                 <h2 className="text-2xl sm:text-3xl font-bold">Catálogo de Novelas</h2>
                 <p className="text-sm sm:text-base opacity-90">
                   Novelas completas disponibles
-                  {transferFeePercentage !== 10 && (
-                    <span className="ml-2 bg-white/20 px-2 py-1 rounded-full text-xs">
+                  {(transferFeePercentage !== 10 || isPriceUpdating) && (
+                    <span className={`ml-2 px-2 py-1 rounded-full text-xs ${
+                      isPriceUpdating ? 'bg-blue-500/30 animate-pulse' : 'bg-white/20'
+                    }`}>
                       Transferencia: {transferFeePercentage}%
+                      {isPriceUpdating && ' 🔄'}
                     </span>
                   )}
                 </p>
@@ -479,9 +496,13 @@ export function NovelasModal({ isOpen, onClose }: NovelasModalProps) {
                   <Info className="h-6 w-6 text-pink-600" />
                 </div>
                 <h3 className="text-xl font-bold text-pink-900">Información Importante</h3>
-                {(lastNovelUpdate || lastPriceUpdate) && (
-                  <div className="ml-auto bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-medium">
-                    Precios actualizados
+                {(isNovelUpdating || isPriceUpdating || lastNovelUpdate || lastPriceUpdate) && (
+                  <div className={`ml-auto px-3 py-1 rounded-full text-xs font-medium ${
+                    isNovelUpdating || isPriceUpdating 
+                      ? 'bg-blue-100 text-blue-700 animate-pulse' 
+                      : 'bg-green-100 text-green-700'
+                  }`}>
+                    {isNovelUpdating || isPriceUpdating ? '🔄 Actualizando...' : '✅ Sincronizado'}
                   </div>
                 )}
               </div>
@@ -506,7 +527,16 @@ export function NovelasModal({ isOpen, onClose }: NovelasModalProps) {
                 {(lastPriceUpdate || lastNovelUpdate) && (
                   <div className="flex items-center">
                     <span className="text-2xl mr-3">🔄</span>
-                    <p className="font-semibold text-green-700">Precios sincronizados en tiempo real</p>
+                    <p className={`font-semibold ${
+                      isPriceUpdating || isNovelUpdating 
+                        ? 'text-blue-700 animate-pulse' 
+                        : 'text-green-700'
+                    }`}>
+                      {isPriceUpdating || isNovelUpdating 
+                        ? 'Sincronizando cambios...' 
+                        : 'Precios sincronizados en tiempo real'
+                      }
+                    </p>
                   </div>
                 )}
               </div>
@@ -550,6 +580,7 @@ export function NovelasModal({ isOpen, onClose }: NovelasModalProps) {
                   <div className="text-lg">Descargar Catálogo</div>
                   <div className="text-sm opacity-90">
                     Lista completa • {transferFeePercentage}% transferencia
+                    {isPriceUpdating && ' 🔄'}
                   </div>
                 </div>
               </button>
@@ -562,7 +593,7 @@ export function NovelasModal({ isOpen, onClose }: NovelasModalProps) {
                 <div className="text-left">
                   <div className="text-lg">Ver y Seleccionar</div>
                   <div className="text-sm opacity-90">
-                    Elegir novelas • Precios actualizados
+                    Elegir novelas • Precios {isPriceUpdating ? 'actualizando 🔄' : 'sincronizados ✅'}
                   </div>
                 </div>
               </button>
@@ -576,9 +607,13 @@ export function NovelasModal({ isOpen, onClose }: NovelasModalProps) {
                   <div className="flex items-center mb-4">
                     <Filter className="h-5 w-5 text-purple-600 mr-2" />
                     <h4 className="text-lg font-bold text-purple-900">Filtros de Búsqueda</h4>
-                    {(lastNovelUpdate || lastPriceUpdate) && (
-                      <div className="ml-auto bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-medium">
-                        Sincronizado
+                    {(isNovelUpdating || isPriceUpdating || lastNovelUpdate || lastPriceUpdate) && (
+                      <div className={`ml-auto px-3 py-1 rounded-full text-xs font-medium ${
+                        isNovelUpdating || isPriceUpdating 
+                          ? 'bg-blue-100 text-blue-700 animate-pulse' 
+                          : 'bg-green-100 text-green-700'
+                      }`}>
+                        {isNovelUpdating || isPriceUpdating ? '🔄 Actualizando...' : '✅ Sincronizado'}
                       </div>
                     )}
                   </div>
@@ -690,9 +725,14 @@ export function NovelasModal({ isOpen, onClose }: NovelasModalProps) {
                     <div className="flex items-center mb-4">
                       <Calculator className="h-6 w-6 text-green-600 mr-3" />
                       <h5 className="text-lg font-bold text-gray-900">Resumen de Selección</h5>
-                      {lastPriceUpdate && (
-                        <div className="ml-auto bg-orange-100 text-orange-700 px-3 py-1 rounded-full text-xs font-medium">
+                      {(isPriceUpdating || lastPriceUpdate) && (
+                        <div className={`ml-auto px-3 py-1 rounded-full text-xs font-medium ${
+                          isPriceUpdating 
+                            ? 'bg-blue-100 text-blue-700 animate-pulse' 
+                            : 'bg-orange-100 text-orange-700'
+                        }`}>
                           Transferencia: {transferFeePercentage}%
+                          {isPriceUpdating && ' 🔄'}
                         </div>
                       )}
                     </div>
@@ -724,11 +764,14 @@ export function NovelasModal({ isOpen, onClose }: NovelasModalProps) {
                       {totals.transferFee > 0 && (
                         <div className="text-sm text-orange-600 mt-2">
                           Incluye {totals.transferFee.toLocaleString()} CUP de recargo por transferencia ({transferFeePercentage}%)
+                          {isPriceUpdating && ' 🔄'}
                         </div>
                       )}
-                      {lastPriceUpdate && (
-                        <div className="text-xs text-green-600 mt-2 text-center">
-                          🔄 Cálculos actualizados en tiempo real
+                      {(isPriceUpdating || lastPriceUpdate) && (
+                        <div className={`text-xs mt-2 text-center ${
+                          isPriceUpdating ? 'text-blue-600 animate-pulse' : 'text-green-600'
+                        }`}>
+                          {isPriceUpdating ? '🔄 Recalculando precios...' : '✅ Cálculos sincronizados en tiempo real'}
                         </div>
                       )}
                     </div>
@@ -823,9 +866,11 @@ export function NovelasModal({ isOpen, onClose }: NovelasModalProps) {
                                   <div className="text-xs text-gray-500 mt-1">
                                     {novelPricePerChapter} CUP × {novela.capitulos} cap.
                                   </div>
-                                  {lastPriceUpdate && (
-                                    <div className="text-xs text-green-600 mt-1">
-                                      ✅ Actualizado
+                                  {(isPriceUpdating || lastPriceUpdate) && (
+                                    <div className={`text-xs mt-1 ${
+                                      isPriceUpdating ? 'text-blue-600 animate-pulse' : 'text-green-600'
+                                    }`}>
+                                      {isPriceUpdating ? '🔄 Actualizando...' : '✅ Sincronizado'}
                                     </div>
                                   )}
                                 </div>
@@ -868,8 +913,13 @@ export function NovelasModal({ isOpen, onClose }: NovelasModalProps) {
                         </p>
                         <p className="text-sm text-gray-600">
                           Total: {totals.grandTotal.toLocaleString()} CUP
-                          {transferFeePercentage !== 10 && (
-                            <span className="ml-2 text-orange-600">• {transferFeePercentage}% transferencia</span>
+                          {(transferFeePercentage !== 10 || isPriceUpdating) && (
+                            <span className={`ml-2 ${
+                              isPriceUpdating ? 'text-blue-600 animate-pulse' : 'text-orange-600'
+                            }`}>
+                              • Transferencia: {transferFeePercentage}%
+                              {isPriceUpdating && ' 🔄'}
+                            </span>
                           )}
                         </p>
                       </div>
