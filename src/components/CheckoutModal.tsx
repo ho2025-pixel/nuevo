@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { X, User, MapPin, Phone, Copy, Check, MessageCircle, Calculator, DollarSign, CreditCard } from 'lucide-react';
-import { useAdmin, AdminContext } from '../context/AdminContext';
+import { AdminContext } from '../context/AdminContext';
 
 export interface CustomerInfo {
   fullName: string;
@@ -62,6 +62,8 @@ export function CheckoutModal({ isOpen, onClose, onCheckout, items, total }: Che
   const [currentTransferFee, setCurrentTransferFee] = React.useState(10);
   const [lastZoneUpdate, setLastZoneUpdate] = React.useState<string | null>(null);
   const [lastPriceUpdate, setLastPriceUpdate] = React.useState<string | null>(null);
+  const [isZoneUpdating, setIsZoneUpdating] = React.useState(false);
+  const [isPriceUpdating, setIsPriceUpdating] = React.useState(false);
   const [customerInfo, setCustomerInfo] = useState<CustomerInfo>({
     fullName: '',
     phone: '',
@@ -76,28 +78,36 @@ export function CheckoutModal({ isOpen, onClose, onCheckout, items, total }: Che
 
   // Real-time zone sync listener
   React.useEffect(() => {
-    const handleZoneUpdate = (event: CustomEvent) => {
-      const zones = event.detail;
+    const handleZoneUpdate = (event: any) => {
+      const { zones, timestamp } = event.detail;
+      
+      setIsZoneUpdating(true);
       const zonesMap = zones.reduce((acc: { [key: string]: number }, zone: any) => {
         acc[zone.name] = zone.cost;
         return acc;
       }, {});
       setCurrentZones(zonesMap);
-      setLastZoneUpdate(new Date().toISOString());
+      setLastZoneUpdate(timestamp);
+      
+      setTimeout(() => setIsZoneUpdating(false), 1000);
     };
     
-    const handlePriceUpdate = (event: CustomEvent) => {
+    const handlePriceUpdate = (event: any) => {
       const { prices, timestamp } = event.detail;
+      
+      setIsPriceUpdating(true);
       setCurrentTransferFee(prices.transferFeePercentage);
       setLastPriceUpdate(timestamp);
+      
+      setTimeout(() => setIsPriceUpdating(false), 1000);
     };
     
-    window.addEventListener('zoneUpdate', handleZoneUpdate as EventListener);
-    window.addEventListener('adminPriceUpdate', handlePriceUpdate as EventListener);
+    window.addEventListener('adminZoneUpdate', handleZoneUpdate);
+    window.addEventListener('adminPriceUpdate', handlePriceUpdate);
     
     return () => {
-      window.removeEventListener('zoneUpdate', handleZoneUpdate as EventListener);
-      window.removeEventListener('adminPriceUpdate', handlePriceUpdate as EventListener);
+      window.removeEventListener('adminZoneUpdate', handleZoneUpdate);
+      window.removeEventListener('adminPriceUpdate', handlePriceUpdate);
     };
   }, []);
 
@@ -292,9 +302,13 @@ export function CheckoutModal({ isOpen, onClose, onCheckout, items, total }: Che
       <div className="bg-white rounded-2xl w-full max-w-4xl max-h-[95vh] overflow-hidden shadow-2xl">
         {/* Header */}
         <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-4 sm:p-6 text-white relative">
-          {(lastZoneUpdate || lastPriceUpdate) && (
-            <div className="absolute top-2 right-16 bg-green-500 text-white text-xs px-3 py-1 rounded-full animate-pulse">
-              Sincronizado
+          {(isZoneUpdating || isPriceUpdating || lastZoneUpdate || lastPriceUpdate) && (
+            <div className={`absolute top-2 right-16 text-white text-xs px-3 py-1 rounded-full ${
+              isZoneUpdating || isPriceUpdating 
+                ? 'bg-blue-500 animate-bounce' 
+                : 'bg-green-500 animate-pulse'
+            }`}>
+              {isZoneUpdating || isPriceUpdating ? '🔄 Actualizando...' : '✅ Sincronizado'}
             </div>
           )}
           <div className="flex items-center justify-between">
@@ -306,8 +320,10 @@ export function CheckoutModal({ isOpen, onClose, onCheckout, items, total }: Che
                 <h2 className="text-xl sm:text-2xl font-bold">Finalizar Pedido</h2>
                 <p className="text-sm opacity-90">
                   Complete sus datos para procesar el pedido
-                  {currentTransferFee !== 10 && (
-                    <span className="ml-2 bg-white/20 px-2 py-1 rounded-full text-xs">
+                  {(currentTransferFee !== 10 || isPriceUpdating) && (
+                    <span className={`ml-2 px-2 py-1 rounded-full text-xs ${
+                      isPriceUpdating ? 'bg-blue-500/30 animate-pulse' : 'bg-white/20'
+                    }`}>
                       Transferencia: {currentTransferFee}%
                     </span>
                   )}
@@ -330,9 +346,14 @@ export function CheckoutModal({ isOpen, onClose, onCheckout, items, total }: Che
               <div className="flex items-center mb-4">
                 <Calculator className="h-6 w-6 text-blue-600 mr-3" />
                 <h3 className="text-lg sm:text-xl font-bold text-gray-900">Resumen del Pedido</h3>
-                {currentTransferFee !== 10 && (
-                  <div className="ml-auto bg-orange-100 text-orange-700 px-3 py-1 rounded-full text-xs font-medium">
+                {(currentTransferFee !== 10 || isPriceUpdating) && (
+                  <div className={`ml-auto px-3 py-1 rounded-full text-xs font-medium ${
+                    isPriceUpdating 
+                      ? 'bg-blue-100 text-blue-700 animate-pulse' 
+                      : 'bg-orange-100 text-orange-700'
+                  }`}>
                     Transferencia: {currentTransferFee}%
+                    {isPriceUpdating && ' 🔄'}
                   </div>
                 )}
               </div>
@@ -356,8 +377,12 @@ export function CheckoutModal({ isOpen, onClose, onCheckout, items, total }: Che
                     <div className="text-sm text-gray-600">Costo de Entrega</div>
                     <div className="text-xs text-gray-500 mt-1">
                       {deliveryZone.split(' > ')[2] || 'Seleccionar zona'}
-                      {lastZoneUpdate && (
-                        <span className="block text-green-600 mt-1">✅ Actualizado</span>
+                      {(lastZoneUpdate || isZoneUpdating) && (
+                        <span className={`block mt-1 ${
+                          isZoneUpdating ? 'text-blue-600 animate-pulse' : 'text-green-600'
+                        }`}>
+                          {isZoneUpdating ? '🔄 Actualizando...' : '✅ Actualizado'}
+                        </span>
                       )}
                     </div>
                   </div>
@@ -372,8 +397,15 @@ export function CheckoutModal({ isOpen, onClose, onCheckout, items, total }: Che
                   </span>
                 </div>
                 {(lastZoneUpdate || lastPriceUpdate) && (
-                  <div className="text-xs text-green-600 mt-2 text-center">
-                    🔄 Precios y zonas sincronizados en tiempo real
+                  <div className={`text-xs mt-2 text-center ${
+                    isZoneUpdating || isPriceUpdating 
+                      ? 'text-blue-600 animate-pulse' 
+                      : 'text-green-600'
+                  }`}>
+                    {isZoneUpdating || isPriceUpdating 
+                      ? '🔄 Sincronizando cambios...' 
+                      : '✅ Precios y zonas sincronizados en tiempo real'
+                    }
                   </div>
                 )}
               </div>
@@ -511,8 +543,12 @@ export function CheckoutModal({ isOpen, onClose, onCheckout, items, total }: Che
                         </div>
                         <div className="text-xs text-green-600 ml-11">
                           ✅ Zona: {deliveryZone.split(' > ')[2]}
-                          {lastZoneUpdate && (
-                            <span className="ml-2 text-green-500">• Actualizado en tiempo real</span>
+                          {(lastZoneUpdate || isZoneUpdating) && (
+                            <span className={`ml-2 ${
+                              isZoneUpdating ? 'text-blue-500 animate-pulse' : 'text-green-500'
+                            }`}>
+                              • {isZoneUpdating ? 'Actualizando...' : 'Sincronizado en tiempo real'}
+                            </span>
                           )}
                         </div>
                       </div>
