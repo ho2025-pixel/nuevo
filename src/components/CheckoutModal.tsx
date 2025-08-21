@@ -58,6 +58,10 @@ const DELIVERY_ZONES = {
 
 export function CheckoutModal({ isOpen, onClose, onCheckout, items, total }: CheckoutModalProps) {
   const adminContext = React.useContext(AdminContext);
+  const [currentZones, setCurrentZones] = React.useState<{ [key: string]: number }>({});
+  const [currentTransferFee, setCurrentTransferFee] = React.useState(10);
+  const [lastZoneUpdate, setLastZoneUpdate] = React.useState<string | null>(null);
+  const [lastPriceUpdate, setLastPriceUpdate] = React.useState<string | null>(null);
   const [customerInfo, setCustomerInfo] = useState<CustomerInfo>({
     fullName: '',
     phone: '',
@@ -70,6 +74,47 @@ export function CheckoutModal({ isOpen, onClose, onCheckout, items, total }: Che
   const [generatedOrder, setGeneratedOrder] = useState('');
   const [copied, setCopied] = useState(false);
 
+  // Real-time zone sync listener
+  React.useEffect(() => {
+    const handleZoneUpdate = (event: CustomEvent) => {
+      const zones = event.detail;
+      const zonesMap = zones.reduce((acc: { [key: string]: number }, zone: any) => {
+        acc[zone.name] = zone.cost;
+        return acc;
+      }, {});
+      setCurrentZones(zonesMap);
+      setLastZoneUpdate(new Date().toISOString());
+    };
+    
+    const handlePriceUpdate = (event: CustomEvent) => {
+      const { prices, timestamp } = event.detail;
+      setCurrentTransferFee(prices.transferFeePercentage);
+      setLastPriceUpdate(timestamp);
+    };
+    
+    window.addEventListener('zoneUpdate', handleZoneUpdate as EventListener);
+    window.addEventListener('adminPriceUpdate', handlePriceUpdate as EventListener);
+    
+    return () => {
+      window.removeEventListener('zoneUpdate', handleZoneUpdate as EventListener);
+      window.removeEventListener('adminPriceUpdate', handlePriceUpdate as EventListener);
+    };
+  }, []);
+
+  // Initialize zones and prices from admin context
+  React.useEffect(() => {
+    if (adminContext?.state?.deliveryZones) {
+      const zonesMap = adminContext.state.deliveryZones.reduce((acc, zone) => {
+        acc[zone.name] = zone.cost;
+        return acc;
+      }, {} as { [key: string]: number });
+      setCurrentZones(zonesMap);
+    }
+    
+    if (adminContext?.state?.prices?.transferFeePercentage) {
+      setCurrentTransferFee(adminContext.state.prices.transferFeePercentage);
+    }
+  }, [adminContext?.state?.deliveryZones, adminContext?.state?.prices]);
   // Get delivery zones from admin context if available
   const adminZones = adminContext?.state?.deliveryZones || [];
   const adminZonesMap = adminZones.reduce((acc, zone) => {
@@ -78,7 +123,7 @@ export function CheckoutModal({ isOpen, onClose, onCheckout, items, total }: Che
   }, {} as { [key: string]: number });
   
   // Combine admin zones with default zones
-  const allZones = { ...DELIVERY_ZONES, ...adminZonesMap };
+  const allZones = { ...DELIVERY_ZONES, ...adminZonesMap, ...currentZones };
   const deliveryCost = allZones[deliveryZone as keyof typeof allZones] || 0;
   const finalTotal = total + deliveryCost;
 
@@ -113,7 +158,7 @@ export function CheckoutModal({ isOpen, onClose, onCheckout, items, total }: Che
     
     const transferTotal = transferItems.reduce((sum, item) => {
       const basePrice = item.type === 'movie' ? 80 : (item.selectedSeasons?.length || 1) * 300;
-      return sum + Math.round(basePrice * 1.1);
+      return sum + Math.round(basePrice * (1 + currentTransferFee / 100));
     }, 0);
     
     return { cashTotal, transferTotal };
@@ -135,8 +180,8 @@ export function CheckoutModal({ isOpen, onClose, onCheckout, items, total }: Che
           : '';
         const itemType = item.type === 'movie' ? 'Película' : 'Serie';
         const basePrice = item.type === 'movie' ? 80 : (item.selectedSeasons?.length || 1) * 300;
-        const finalPrice = item.paymentType === 'transfer' ? Math.round(basePrice * 1.1) : basePrice;
-        const paymentTypeText = item.paymentType === 'transfer' ? 'Transferencia (+10%)' : 'Efectivo';
+        const finalPrice = item.paymentType === 'transfer' ? Math.round(basePrice * (1 + currentTransferFee / 100)) : basePrice;
+        const paymentTypeText = item.paymentType === 'transfer' ? `Transferencia (+${currentTransferFee}%)` : 'Efectivo';
         const emoji = item.type === 'movie' ? '🎬' : '📺';
         return `${emoji} *${item.title}*${seasonInfo}\n  📋 Tipo: ${itemType}\n  💳 Pago: ${paymentTypeText}\n  💰 Precio: $${finalPrice.toLocaleString()} CUP`;
       })
@@ -163,7 +208,7 @@ export function CheckoutModal({ isOpen, onClose, onCheckout, items, total }: Che
     orderText += `• *Subtotal Contenido: $${total.toLocaleString()} CUP*\n`;
     
     if (transferFee > 0) {
-      orderText += `• Recargo transferencia (10%): +$${transferFee.toLocaleString()} CUP\n`;
+      orderText += `• Recargo transferencia (${currentTransferFee}%): +$${transferFee.toLocaleString()} CUP\n`;
     }
     
     orderText += `🚚 Entrega (${deliveryZone.split(' > ')[2]}): +$${deliveryCost.toLocaleString()} CUP\n`;
@@ -174,6 +219,7 @@ export function CheckoutModal({ isOpen, onClose, onCheckout, items, total }: Che
     orderText += `💰 Costo de entrega: $${deliveryCost.toLocaleString()} CUP\n\n`;
     
     orderText += `⏰ *Fecha:* ${new Date().toLocaleString('es-ES')}\n`;
+    orderText += `🔄 *Sistema sincronizado:* Precios y zonas actualizados en tiempo real\n`;
     orderText += `🌟 *¡Gracias por elegir TV a la Carta!*`;
 
     return { orderText, orderId };
@@ -245,7 +291,12 @@ export function CheckoutModal({ isOpen, onClose, onCheckout, items, total }: Che
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-2 sm:p-4">
       <div className="bg-white rounded-2xl w-full max-w-4xl max-h-[95vh] overflow-hidden shadow-2xl">
         {/* Header */}
-        <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-4 sm:p-6 text-white">
+        <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-4 sm:p-6 text-white relative">
+          {(lastZoneUpdate || lastPriceUpdate) && (
+            <div className="absolute top-2 right-16 bg-green-500 text-white text-xs px-3 py-1 rounded-full animate-pulse">
+              Sincronizado
+            </div>
+          )}
           <div className="flex items-center justify-between">
             <div className="flex items-center">
               <div className="bg-white/20 p-2 rounded-lg mr-3">
@@ -253,7 +304,14 @@ export function CheckoutModal({ isOpen, onClose, onCheckout, items, total }: Che
               </div>
               <div>
                 <h2 className="text-xl sm:text-2xl font-bold">Finalizar Pedido</h2>
-                <p className="text-sm opacity-90">Complete sus datos para procesar el pedido</p>
+                <p className="text-sm opacity-90">
+                  Complete sus datos para procesar el pedido
+                  {currentTransferFee !== 10 && (
+                    <span className="ml-2 bg-white/20 px-2 py-1 rounded-full text-xs">
+                      Transferencia: {currentTransferFee}%
+                    </span>
+                  )}
+                </p>
               </div>
             </div>
             <button
@@ -272,6 +330,11 @@ export function CheckoutModal({ isOpen, onClose, onCheckout, items, total }: Che
               <div className="flex items-center mb-4">
                 <Calculator className="h-6 w-6 text-blue-600 mr-3" />
                 <h3 className="text-lg sm:text-xl font-bold text-gray-900">Resumen del Pedido</h3>
+                {currentTransferFee !== 10 && (
+                  <div className="ml-auto bg-orange-100 text-orange-700 px-3 py-1 rounded-full text-xs font-medium">
+                    Transferencia: {currentTransferFee}%
+                  </div>
+                )}
               </div>
               
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
@@ -293,6 +356,9 @@ export function CheckoutModal({ isOpen, onClose, onCheckout, items, total }: Che
                     <div className="text-sm text-gray-600">Costo de Entrega</div>
                     <div className="text-xs text-gray-500 mt-1">
                       {deliveryZone.split(' > ')[2] || 'Seleccionar zona'}
+                      {lastZoneUpdate && (
+                        <span className="block text-green-600 mt-1">✅ Actualizado</span>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -305,6 +371,11 @@ export function CheckoutModal({ isOpen, onClose, onCheckout, items, total }: Che
                     ${finalTotal.toLocaleString()} CUP
                   </span>
                 </div>
+                {(lastZoneUpdate || lastPriceUpdate) && (
+                  <div className="text-xs text-green-600 mt-2 text-center">
+                    🔄 Precios y zonas sincronizados en tiempo real
+                  </div>
+                )}
               </div>
             </div>
 
@@ -367,6 +438,11 @@ export function CheckoutModal({ isOpen, onClose, onCheckout, items, total }: Che
                   <h3 className="text-lg sm:text-xl font-bold mb-4 flex items-center text-gray-900">
                     <MapPin className="h-5 w-5 mr-3 text-green-600" />
                     Zona de Entrega
+                    {lastZoneUpdate && (
+                      <div className="ml-auto bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-medium">
+                        Zonas actualizadas
+                      </div>
+                    )}
                   </h3>
                   
                   <div className="bg-gradient-to-r from-green-50 to-blue-50 rounded-xl p-4 mb-4 border border-green-200">
@@ -377,7 +453,7 @@ export function CheckoutModal({ isOpen, onClose, onCheckout, items, total }: Che
                       <h4 className="font-semibold text-green-900">Información de Entrega</h4>
                     </div>
                     <p className="text-sm text-green-700 ml-11">
-                      Seleccione su zona para calcular el costo de entrega. Los precios pueden variar según la distancia.
+                      Seleccione su zona para calcular el costo de entrega. Los precios se actualizan automáticamente.
                     </p>
                   </div>
                   
@@ -435,6 +511,9 @@ export function CheckoutModal({ isOpen, onClose, onCheckout, items, total }: Che
                         </div>
                         <div className="text-xs text-green-600 ml-11">
                           ✅ Zona: {deliveryZone.split(' > ')[2]}
+                          {lastZoneUpdate && (
+                            <span className="ml-2 text-green-500">• Actualizado en tiempo real</span>
+                          )}
                         </div>
                       </div>
                     )}

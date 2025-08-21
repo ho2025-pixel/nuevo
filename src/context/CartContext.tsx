@@ -19,7 +19,8 @@ type CartAction =
   | { type: 'UPDATE_SEASONS'; payload: { id: number; seasons: number[] } }
   | { type: 'UPDATE_PAYMENT_TYPE'; payload: { id: number; paymentType: 'cash' | 'transfer' } }
   | { type: 'CLEAR_CART' }
-  | { type: 'LOAD_CART'; payload: SeriesCartItem[] };
+  | { type: 'LOAD_CART'; payload: SeriesCartItem[] }
+  | { type: 'UPDATE_PRICES_REALTIME'; payload: { moviePrice: number; seriesPrice: number; transferFeePercentage: number } };
 
 interface CartContextType {
   state: CartState;
@@ -34,6 +35,7 @@ interface CartContextType {
   calculateItemPrice: (item: SeriesCartItem) => number;
   calculateTotalPrice: () => number;
   calculateTotalByPaymentType: () => { cash: number; transfer: number };
+  getCurrentPrices: () => { moviePrice: number; seriesPrice: number; transferFeePercentage: number };
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -83,6 +85,9 @@ function cartReducer(state: CartState, action: CartAction): CartState {
         items: action.payload,
         total: action.payload.length
       };
+    case 'UPDATE_PRICES_REALTIME':
+      // This doesn't change the cart state but triggers recalculations
+      return { ...state };
     default:
       return state;
   }
@@ -91,12 +96,55 @@ function cartReducer(state: CartState, action: CartAction): CartState {
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(cartReducer, { items: [], total: 0 });
   const adminContext = React.useContext(AdminContext);
+  const [currentPrices, setCurrentPrices] = React.useState({
+    moviePrice: 80,
+    seriesPrice: 300,
+    transferFeePercentage: 10
+  });
   const [toast, setToast] = React.useState<{
     message: string;
     type: 'success' | 'error';
     isVisible: boolean;
   }>({ message: '', type: 'success', isVisible: false });
 
+  // Real-time price sync listener
+  useEffect(() => {
+    const handlePriceUpdate = (event: CustomEvent) => {
+      const { prices } = event.detail;
+      setCurrentPrices({
+        moviePrice: prices.moviePrice,
+        seriesPrice: prices.seriesPrice,
+        transferFeePercentage: prices.transferFeePercentage
+      });
+      
+      // Trigger cart recalculation
+      dispatch({ 
+        type: 'UPDATE_PRICES_REALTIME', 
+        payload: prices 
+      });
+      
+      // Show toast notification for price changes
+      setToast({
+        message: `Precios actualizados: Transferencia ${prices.transferFeePercentage}%`,
+        type: 'success',
+        isVisible: true
+      });
+    };
+    
+    window.addEventListener('adminPriceUpdate', handlePriceUpdate as EventListener);
+    return () => window.removeEventListener('adminPriceUpdate', handlePriceUpdate as EventListener);
+  }, []);
+
+  // Initialize current prices from admin context
+  useEffect(() => {
+    if (adminContext?.state?.prices) {
+      setCurrentPrices({
+        moviePrice: adminContext.state.prices.moviePrice,
+        seriesPrice: adminContext.state.prices.seriesPrice,
+        transferFeePercentage: adminContext.state.prices.transferFeePercentage
+      });
+    }
+  }, [adminContext?.state?.prices]);
   // Limpiar carrito al cargar la página (detectar refresh)
   useEffect(() => {
     const handleBeforeUnload = () => {
@@ -210,10 +258,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
                    (item.genre_ids && item.genre_ids.includes(16)) ||
                    item.title?.toLowerCase().includes('anime');
     
-    // Get prices from admin context if available
-    const moviePrice = adminContext?.state?.prices?.moviePrice || 80;
-    const seriesPrice = adminContext?.state?.prices?.seriesPrice || 300;
-    const transferFeePercentage = adminContext?.state?.prices?.transferFeePercentage || 10;
+    // Use real-time synchronized prices
+    const moviePrice = currentPrices.moviePrice;
+    const seriesPrice = currentPrices.seriesPrice;
+    const transferFeePercentage = currentPrices.transferFeePercentage;
     
     if (item.type === 'movie') {
       const basePrice = moviePrice;
@@ -233,9 +281,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   };
 
   const calculateTotalByPaymentType = (): { cash: number; transfer: number } => {
-    const moviePrice = adminContext?.state?.prices?.moviePrice || 80;
-    const seriesPrice = adminContext?.state?.prices?.seriesPrice || 300;
-    const transferFeePercentage = adminContext?.state?.prices?.transferFeePercentage || 10;
+    // Use real-time synchronized prices
+    const moviePrice = currentPrices.moviePrice;
+    const seriesPrice = currentPrices.seriesPrice;
+    const transferFeePercentage = currentPrices.transferFeePercentage;
     
     return state.items.reduce((totals, item) => {
       const basePrice = item.type === 'movie' ? moviePrice : (item.selectedSeasons?.length || 1) * seriesPrice;
@@ -248,6 +297,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }, { cash: 0, transfer: 0 });
   };
 
+  const getCurrentPrices = () => {
+    return currentPrices;
+  };
   const closeToast = () => {
     setToast(prev => ({ ...prev, isVisible: false }));
   };
@@ -265,7 +317,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       getItemPaymentType,
       calculateItemPrice,
       calculateTotalPrice,
-      calculateTotalByPaymentType
+      calculateTotalByPaymentType,
+      getCurrentPrices
     }}>
       {children}
       <Toast

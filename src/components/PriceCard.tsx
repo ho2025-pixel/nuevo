@@ -11,11 +11,44 @@ interface PriceCardProps {
 
 export function PriceCard({ type, selectedSeasons = [], episodeCount = 0, isAnime = false }: PriceCardProps) {
   const adminContext = React.useContext(AdminContext);
+  const [currentPrices, setCurrentPrices] = React.useState({
+    moviePrice: 80,
+    seriesPrice: 300,
+    transferFeePercentage: 10
+  });
+  const [lastUpdate, setLastUpdate] = React.useState<string | null>(null);
+
+  // Real-time price sync listener
+  React.useEffect(() => {
+    const handlePriceUpdate = (event: CustomEvent) => {
+      const { prices, timestamp } = event.detail;
+      setCurrentPrices({
+        moviePrice: prices.moviePrice,
+        seriesPrice: prices.seriesPrice,
+        transferFeePercentage: prices.transferFeePercentage
+      });
+      setLastUpdate(timestamp);
+    };
+    
+    window.addEventListener('adminPriceUpdate', handlePriceUpdate as EventListener);
+    return () => window.removeEventListener('adminPriceUpdate', handlePriceUpdate as EventListener);
+  }, []);
+
+  // Initialize prices from admin context
+  React.useEffect(() => {
+    if (adminContext?.state?.prices) {
+      setCurrentPrices({
+        moviePrice: adminContext.state.prices.moviePrice,
+        seriesPrice: adminContext.state.prices.seriesPrice,
+        transferFeePercentage: adminContext.state.prices.transferFeePercentage
+      });
+    }
+  }, [adminContext?.state?.prices]);
   
-  // Get prices from admin context if available
-  const moviePrice = adminContext?.state?.prices?.moviePrice || 80;
-  const seriesPrice = adminContext?.state?.prices?.seriesPrice || 300;
-  const transferFeePercentage = adminContext?.state?.prices?.transferFeePercentage || 10;
+  // Use real-time synchronized prices
+  const moviePrice = currentPrices.moviePrice;
+  const seriesPrice = currentPrices.seriesPrice;
+  const transferFeePercentage = currentPrices.transferFeePercentage;
   
   const calculatePrice = () => {
     if (type === 'movie') {
@@ -48,7 +81,12 @@ export function PriceCard({ type, selectedSeasons = [], episodeCount = 0, isAnim
   };
 
   return (
-    <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-4 border-2 border-green-200 shadow-lg">
+    <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-4 border-2 border-green-200 shadow-lg relative">
+      {lastUpdate && (
+        <div className="absolute top-2 right-2 bg-green-500 text-white text-xs px-2 py-1 rounded-full animate-pulse">
+          Actualizado
+        </div>
+      )}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center">
           <div className="bg-green-100 p-2 rounded-lg mr-3 shadow-sm">
@@ -104,6 +142,12 @@ export function PriceCard({ type, selectedSeasons = [], episodeCount = 0, isAnim
             ${(price / selectedSeasons.length).toLocaleString()} CUP por temporada (efectivo)
           </div>
         )}
+        
+        {/* Indicador de sincronización */}
+        <div className="text-xs text-gray-500 text-center bg-gray-100 rounded-lg p-2 flex items-center justify-center">
+          <div className="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></div>
+          Precios sincronizados en tiempo real
+        </div>
       </div>
     </div>
   );
