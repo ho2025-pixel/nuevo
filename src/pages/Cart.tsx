@@ -2,7 +2,6 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { ShoppingCart, Trash2, Star, Calendar, MessageCircle, ArrowLeft, Edit3, Tv, DollarSign, CreditCard, Calculator } from 'lucide-react';
 import { useCart } from '../context/CartContext';
-import { AdminContext } from '../context/AdminContext';
 import { PriceCard } from '../components/PriceCard';
 import { CheckoutModal, OrderData, CustomerInfo } from '../components/CheckoutModal';
 import { sendOrderToWhatsApp } from '../utils/whatsapp';
@@ -10,32 +9,7 @@ import { IMAGE_BASE_URL, POSTER_SIZE } from '../config/api';
 
 export function Cart() {
   const { state, removeItem, clearCart, updatePaymentType, calculateItemPrice, calculateTotalPrice, calculateTotalByPaymentType } = useCart();
-  const adminContext = React.useContext(AdminContext);
-  const [currentTransferFee, setCurrentTransferFee] = React.useState(10);
-  const [isPriceUpdating, setIsPriceUpdating] = React.useState(false);
   const [showCheckoutModal, setShowCheckoutModal] = React.useState(false);
-
-  // Real-time price sync listener for cart page
-  React.useEffect(() => {
-    const handlePriceUpdate = (event: any) => {
-      const { prices } = event.detail;
-      
-      setIsPriceUpdating(true);
-      setCurrentTransferFee(prices.transferFeePercentage);
-      
-      setTimeout(() => setIsPriceUpdating(false), 1000);
-    };
-    
-    window.addEventListener('adminPriceUpdate', handlePriceUpdate);
-    return () => window.removeEventListener('adminPriceUpdate', handlePriceUpdate);
-  }, []);
-
-  // Initialize transfer fee from admin context
-  React.useEffect(() => {
-    if (adminContext?.state?.prices?.transferFeePercentage) {
-      setCurrentTransferFee(adminContext.state.prices.transferFeePercentage);
-    }
-  }, [adminContext?.state?.prices]);
 
   const handleCheckout = (orderData: OrderData) => {
     // Calculate totals
@@ -201,8 +175,7 @@ export function Cart() {
                             }`}
                           >
                             <CreditCard className="h-3 w-3 inline mr-1" />
-                            Transferencia (+{currentTransferFee}%)
-                            {isPriceUpdating && ' 🔄'}
+                            Transferencia (+10%)
                           </button>
                         </div>
                       </div>
@@ -258,8 +231,7 @@ export function Cart() {
                         </div>
                         {item.paymentType === 'transfer' && (
                           <div className="text-xs text-orange-600 mt-1">
-                            +{currentTransferFee}% incluido
-                            {isPriceUpdating && ' 🔄'}
+                            +10% incluido
                           </div>
                         )}
                       </div>
@@ -310,17 +282,10 @@ export function Cart() {
           
           <div className="p-4 sm:p-6">
             {/* Desglose por tipo de pago */}
-            <div className={`bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl p-4 mb-6 border border-blue-100 transition-all duration-300 ${
-              isPriceUpdating ? 'ring-2 ring-blue-400 ring-opacity-50' : ''
-            }`}>
+            <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl p-4 mb-6 border border-blue-100">
               <h4 className="font-bold text-gray-900 mb-4 flex items-center justify-center sm:justify-start">
                 <Calculator className="mr-2 h-5 w-5 text-blue-600" />
                 Desglose por Tipo de Pago
-                {isPriceUpdating && (
-                  <span className="ml-2 bg-blue-500 text-white px-2 py-1 rounded-full text-xs animate-pulse">
-                    Actualizando...
-                  </span>
-                )}
               </h4>
               
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
@@ -349,8 +314,7 @@ export function Cart() {
                       ${totalsByPaymentType.transfer.toLocaleString()} CUP
                     </div>
                     <div className="text-sm text-orange-600">
-                      {state.items.filter(item => item.paymentType === 'transfer').length} elementos (+{currentTransferFee}%)
-                      {isPriceUpdating && ' 🔄'}
+                      {state.items.filter(item => item.paymentType === 'transfer').length} elementos (+10%)
                     </div>
                   </div>
                 </div>

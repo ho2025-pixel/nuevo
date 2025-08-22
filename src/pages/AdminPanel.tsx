@@ -40,12 +40,11 @@ import {
 import { useAdmin } from '../context/AdminContext';
 import type { PriceConfig, DeliveryZone, Novel } from '../context/AdminContext';
 
-// Componente de fondo animado con redes
+// Animated Network Background Component
 const AnimatedNetworkBackground = () => {
   return (
     <div className="fixed inset-0 overflow-hidden pointer-events-none">
       <div className="absolute inset-0 bg-gradient-to-br from-blue-900 via-purple-900 to-indigo-900">
-        {/* Nodos de red animados */}
         {[...Array(20)].map((_, i) => (
           <div
             key={i}
@@ -59,7 +58,6 @@ const AnimatedNetworkBackground = () => {
           />
         ))}
         
-        {/* Líneas de conexión animadas */}
         <svg className="absolute inset-0 w-full h-full">
           {[...Array(15)].map((_, i) => (
             <line
@@ -79,7 +77,6 @@ const AnimatedNetworkBackground = () => {
           ))}
         </svg>
         
-        {/* Partículas flotantes */}
         {[...Array(30)].map((_, i) => (
           <div
             key={i}
@@ -106,7 +103,7 @@ const AnimatedNetworkBackground = () => {
   );
 };
 
-// Componente de Login Moderno
+// Modern Login Component
 const ModernLogin = ({ onLogin }: { onLogin: (username: string, password: string) => void }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -119,7 +116,6 @@ const ModernLogin = ({ onLogin }: { onLogin: (username: string, password: string
     setIsLoading(true);
     setError('');
     
-    // Simular delay de autenticación
     await new Promise(resolve => setTimeout(resolve, 1000));
     
     const success = onLogin(username, password);
@@ -133,7 +129,6 @@ const ModernLogin = ({ onLogin }: { onLogin: (username: string, password: string
     <div className="min-h-screen flex items-center justify-center relative">
       <AnimatedNetworkBackground />
       
-      {/* Botón de regreso mejorado */}
       <Link
         to="/"
         className="absolute top-8 left-8 z-20 group"
@@ -148,10 +143,8 @@ const ModernLogin = ({ onLogin }: { onLogin: (username: string, password: string
         </div>
       </Link>
 
-      {/* Formulario de login */}
       <div className="relative z-10 w-full max-w-md mx-4">
         <div className="bg-white/10 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/20 overflow-hidden">
-          {/* Header del formulario */}
           <div className="bg-gradient-to-r from-blue-600/80 to-purple-600/80 backdrop-blur-sm p-8 text-center">
             <div className="bg-white/20 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
               <Shield className="h-10 w-10 text-white" />
@@ -160,10 +153,8 @@ const ModernLogin = ({ onLogin }: { onLogin: (username: string, password: string
             <p className="text-blue-100 text-lg">Sistema de Administración</p>
           </div>
 
-          {/* Formulario */}
           <div className="p-8">
             <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Campo de usuario */}
               <div className="space-y-2">
                 <label className="text-white font-medium text-sm uppercase tracking-wide">
                   Usuario
@@ -183,7 +174,6 @@ const ModernLogin = ({ onLogin }: { onLogin: (username: string, password: string
                 </div>
               </div>
 
-              {/* Campo de contraseña */}
               <div className="space-y-2">
                 <label className="text-white font-medium text-sm uppercase tracking-wide">
                   Contraseña
@@ -210,7 +200,6 @@ const ModernLogin = ({ onLogin }: { onLogin: (username: string, password: string
                 </div>
               </div>
 
-              {/* Error message */}
               {error && (
                 <div className="bg-red-500/20 backdrop-blur-sm border border-red-400/30 rounded-xl p-4 flex items-center space-x-3">
                   <AlertCircle className="h-5 w-5 text-red-300 flex-shrink-0" />
@@ -218,7 +207,6 @@ const ModernLogin = ({ onLogin }: { onLogin: (username: string, password: string
                 </div>
               )}
 
-              {/* Botón de login */}
               <button
                 type="submit"
                 disabled={isLoading}
@@ -238,7 +226,6 @@ const ModernLogin = ({ onLogin }: { onLogin: (username: string, password: string
               </button>
             </form>
 
-            {/* Información adicional */}
             <div className="mt-8 text-center">
               <div className="bg-blue-500/20 backdrop-blur-sm rounded-xl p-4 border border-blue-400/30">
                 <div className="flex items-center justify-center space-x-2 text-blue-200 text-sm">
@@ -250,7 +237,6 @@ const ModernLogin = ({ onLogin }: { onLogin: (username: string, password: string
           </div>
         </div>
 
-        {/* Indicadores de estado del sistema */}
         <div className="mt-8 grid grid-cols-3 gap-4">
           <div className="bg-green-500/20 backdrop-blur-sm rounded-xl p-4 border border-green-400/30 text-center">
             <div className="w-3 h-3 bg-green-400 rounded-full mx-auto mb-2 animate-pulse"></div>
@@ -270,7 +256,7 @@ const ModernLogin = ({ onLogin }: { onLogin: (username: string, password: string
   );
 };
 
-// Componente principal del AdminPanel
+// Main AdminPanel Component
 export function AdminPanel() {
   const { state, login, logout, updatePrices, addDeliveryZone, updateDeliveryZone, deleteDeliveryZone, addNovel, updateNovel, deleteNovel, clearNotifications, exportSystemBackup } = useAdmin();
   const [activeSection, setActiveSection] = useState<'dashboard' | 'prices' | 'zones' | 'novels' | 'system' | 'notifications'>('dashboard');
@@ -279,7 +265,7 @@ export function AdminPanel() {
   const [showAddZoneForm, setShowAddZoneForm] = useState(false);
   const [showAddNovelForm, setShowAddNovelForm] = useState(false);
 
-  // Estados para formularios
+  // Form states
   const [priceForm, setPriceForm] = useState<PriceConfig>(state.prices);
   const [zoneForm, setZoneForm] = useState({ name: '', cost: 0, active: true });
   const [novelForm, setNovelForm] = useState({ titulo: '', genero: '', capitulos: 0, año: new Date().getFullYear(), descripcion: '', active: true });
@@ -295,15 +281,6 @@ export function AdminPanel() {
   const handlePriceUpdate = (e: React.FormEvent) => {
     e.preventDefault();
     updatePrices(priceForm);
-    
-    // Show immediate feedback
-    const updatedElements = document.querySelectorAll('[data-price-sync]');
-    updatedElements.forEach(el => {
-      el.classList.add('animate-pulse', 'ring-2', 'ring-green-400');
-      setTimeout(() => {
-        el.classList.remove('animate-pulse', 'ring-2', 'ring-green-400');
-      }, 2000);
-    });
   };
 
   const handleAddZone = (e: React.FormEvent) => {
@@ -350,7 +327,7 @@ export function AdminPanel() {
 
   const renderDashboard = () => (
     <div className="space-y-8">
-      {/* Estadísticas principales */}
+      {/* Main statistics */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-6 text-white shadow-xl">
           <div className="flex items-center justify-between">
@@ -393,7 +370,7 @@ export function AdminPanel() {
         </div>
       </div>
 
-      {/* Actividad reciente */}
+      {/* Recent activity */}
       <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
         <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-b border-gray-200">
           <h3 className="text-xl font-bold text-gray-900 flex items-center">
@@ -436,20 +413,11 @@ export function AdminPanel() {
           <DollarSign className="mr-3 h-6 w-6 text-green-600" />
           Configuración de Precios
         </h3>
+        <p className="text-sm text-gray-600 mt-1">
+          Los cambios se aplicarán en tiempo real en toda la aplicación
+        </p>
       </div>
       <form onSubmit={handlePriceUpdate} className="p-6 space-y-6">
-        <div className="bg-blue-50 rounded-xl p-4 mb-6 border border-blue-200">
-          <div className="flex items-center mb-2">
-            <div className="bg-blue-100 p-2 rounded-lg mr-3">
-              <span className="text-sm">⚡</span>
-            </div>
-            <h4 className="font-semibold text-blue-900">Sincronización en Tiempo Real</h4>
-          </div>
-          <p className="text-sm text-blue-700 ml-11">
-            Los cambios se aplicarán inmediatamente en toda la aplicación al guardar
-          </p>
-        </div>
-        
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -481,26 +449,25 @@ export function AdminPanel() {
           
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Recargo por Transferencia (%) - Sincronización Automática
+              Recargo por Transferencia (%)
             </label>
-            <div className="bg-orange-50 rounded-lg p-3 mb-2 border border-orange-200">
-              <p className="text-xs text-orange-700">
-                ⚡ Este porcentaje se aplicará automáticamente en toda la app: carrito, checkout, novelas y cálculos de precios
-              </p>
+            <div className="relative">
+              <input
+                type="number"
+                value={priceForm.transferFeePercentage}
+                onChange={(e) => setPriceForm({ ...priceForm, transferFeePercentage: parseInt(e.target.value) })}
+                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                min="0"
+                max="100"
+                required
+              />
+              <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500">
+                %
+              </div>
             </div>
-            <input
-              type="number"
-              value={priceForm.transferFeePercentage}
-              onChange={(e) => setPriceForm({ ...priceForm, transferFeePercentage: parseInt(e.target.value) })}
-              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-              data-price-sync
-              min="0"
-              max="100"
-              required
-            />
-            <div className="mt-2 text-xs text-gray-600">
-              Valor actual: {priceForm.transferFeePercentage}% • Se aplicará en: Carrito, Checkout, Novelas
-            </div>
+            <p className="text-xs text-gray-500 mt-1">
+              Se aplicará automáticamente en todos los cálculos de transferencia
+            </p>
           </div>
           
           <div>
@@ -518,34 +485,33 @@ export function AdminPanel() {
           </div>
         </div>
         
-        <button
-          type="submit"
-          className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-bold py-4 px-6 rounded-xl transition-all duration-300 transform hover:scale-105 hover:shadow-lg flex items-center justify-center space-x-2"
-        >
-          <div className="bg-white/20 p-2 rounded-lg">
-            <Save className="h-5 w-5" />
-          </div>
-          <div className="text-left">
-            <div className="text-lg">Guardar y Sincronizar Precios</div>
-            <div className="text-sm opacity-90">Aplicar cambios en tiempo real</div>
-          </div>
-        </button>
-        
-        <div className="bg-gradient-to-r from-green-50 to-blue-50 rounded-xl p-4 border border-green-200">
-          <div className="flex items-center justify-center text-sm text-green-700">
-            <span className="mr-2">⚡</span>
-            <span className="font-medium">
-              Los cambios se sincronizarán automáticamente en: PriceCard, CartContext, CheckoutModal, NovelasModal y Cart
-            </span>
+        <div className="bg-blue-50 rounded-xl p-4 border border-blue-200">
+          <h4 className="font-semibold text-blue-900 mb-2">Vista Previa de Cambios</h4>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+            <div>
+              <p className="text-blue-700">• Película: ${priceForm.moviePrice} CUP</p>
+              <p className="text-blue-700">• Serie (1 temp.): ${priceForm.seriesPrice} CUP</p>
+            </div>
+            <div>
+              <p className="text-blue-700">• Transferencia película: ${Math.round(priceForm.moviePrice * (1 + priceForm.transferFeePercentage / 100))} CUP</p>
+              <p className="text-blue-700">• Transferencia serie: ${Math.round(priceForm.seriesPrice * (1 + priceForm.transferFeePercentage / 100))} CUP</p>
+            </div>
           </div>
         </div>
+        
+        <button
+          type="submit"
+          className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-bold py-3 px-6 rounded-xl transition-all duration-300 transform hover:scale-105 hover:shadow-lg flex items-center justify-center space-x-2"
+        >
+          <Save className="h-5 w-5" />
+          <span>Guardar Precios</span>
+        </button>
       </form>
     </div>
   );
 
   const renderZones = () => (
     <div className="space-y-6">
-      {/* Botón para agregar zona */}
       <div className="flex justify-between items-center">
         <h3 className="text-2xl font-bold text-gray-900">Zonas de Entrega</h3>
         <button
@@ -557,7 +523,6 @@ export function AdminPanel() {
         </button>
       </div>
 
-      {/* Formulario para agregar/editar zona */}
       {(showAddZoneForm || editingZone) && (
         <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
           <div className="bg-gradient-to-r from-blue-50 to-purple-50 px-6 py-4 border-b border-gray-200">
@@ -631,7 +596,6 @@ export function AdminPanel() {
         </div>
       )}
 
-      {/* Lista de zonas */}
       <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
         <div className="bg-gradient-to-r from-blue-50 to-purple-50 px-6 py-4 border-b border-gray-200">
           <h4 className="text-lg font-bold text-gray-900">Zonas Configuradas ({state.deliveryZones.length})</h4>
@@ -680,7 +644,6 @@ export function AdminPanel() {
 
   const renderNovels = () => (
     <div className="space-y-6">
-      {/* Botón para agregar novela */}
       <div className="flex justify-between items-center">
         <h3 className="text-2xl font-bold text-gray-900">Gestión de Novelas</h3>
         <button
@@ -692,7 +655,6 @@ export function AdminPanel() {
         </button>
       </div>
 
-      {/* Formulario para agregar/editar novela */}
       {(showAddNovelForm || editingNovel) && (
         <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
           <div className="bg-gradient-to-r from-pink-50 to-purple-50 px-6 py-4 border-b border-gray-200">
@@ -807,7 +769,6 @@ export function AdminPanel() {
         </div>
       )}
 
-      {/* Lista de novelas */}
       <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
         <div className="bg-gradient-to-r from-pink-50 to-purple-50 px-6 py-4 border-b border-gray-200">
           <h4 className="text-lg font-bold text-gray-900">Novelas Configuradas ({state.novels.length})</h4>
@@ -867,7 +828,6 @@ export function AdminPanel() {
           </h3>
         </div>
         <div className="p-6 space-y-6">
-          {/* Información del sistema */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-200">
               <div className="flex items-center justify-between mb-4">
@@ -896,7 +856,6 @@ export function AdminPanel() {
             </div>
           </div>
 
-          {/* Botón de exportación */}
           <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl p-6 border border-indigo-200">
             <div className="text-center">
               <h4 className="text-xl font-bold text-gray-900 mb-4">Exportar Sistema Completo</h4>
@@ -913,7 +872,6 @@ export function AdminPanel() {
             </div>
           </div>
 
-          {/* Lista de archivos del sistema */}
           <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
             <div className="bg-gray-50 px-6 py-4 border-b border-gray-200">
               <h4 className="font-semibold text-gray-900">Archivos del Sistema</h4>
