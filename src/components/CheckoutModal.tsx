@@ -73,12 +73,14 @@ export function CheckoutModal({ isOpen, onClose, onCheckout, items, total }: Che
   // Get delivery zones from admin context with real-time updates
   const adminZones = adminContext?.state?.deliveryZones || [];
   const adminZonesMap = adminZones.reduce((acc, zone) => {
-    acc[zone.name] = zone.cost;
+    if (zone.active) {
+      acc[zone.name] = zone.cost;
+    }
     return acc;
   }, {} as { [key: string]: number });
   
   // Combine admin zones with base zones - real-time sync
-  const allZones = { ...BASE_DELIVERY_ZONES, ...adminZonesMap };
+  const allZones = { 'Por favor seleccionar su Barrio/Zona': 0, ...adminZonesMap };
   const deliveryCost = allZones[deliveryZone as keyof typeof allZones] || 0;
   const finalTotal = total + deliveryCost;
 
