@@ -12,6 +12,8 @@ interface AdminContextType {
 
 const AdminContext = createContext<AdminContextType | undefined>(undefined);
 
+export { AdminContext };
+
 const ADMIN_PASSWORD = 'admin123'; // In production, this should be handled securely
 
 export const AdminProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
