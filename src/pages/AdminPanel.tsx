@@ -44,6 +44,7 @@ export function AdminPanel() {
   } = useAdmin();
 
   // Authentication state
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loginError, setLoginError] = useState('');
@@ -72,15 +73,19 @@ export function AdminPanel() {
     setPriceForm(state.prices);
   }, [state.prices]);
 
-  const correctPassword = 'admin123';
+  // Credenciales actualizadas
+  const LOGIN_CREDENTIALS = {
+    username: 'root',
+    password: 'video'
+  };
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (password === correctPassword) {
+    if (username === LOGIN_CREDENTIALS.username && password === LOGIN_CREDENTIALS.password) {
       login();
       setLoginError('');
     } else {
-      setLoginError('Contraseña incorrecta');
+      setLoginError('Usuario o contraseña incorrectos');
     }
   };
 
@@ -496,6 +501,20 @@ export function AdminPanel() {
           <form onSubmit={handleLogin} className="p-6 space-y-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
+                Usuario
+              </label>
+              <input
+                type="text"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="Ingrese el usuario"
+                required
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
                 Contraseña de Administrador
               </label>
               <div className="relative">
@@ -521,6 +540,14 @@ export function AdminPanel() {
                   {loginError}
                 </p>
               )}
+            </div>
+            
+            <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
+              <p className="text-sm text-blue-700">
+                <strong>Credenciales:</strong><br />
+                Usuario: root<br />
+                Contraseña: video
+              </p>
             </div>
             
             <button
