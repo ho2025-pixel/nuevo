@@ -45,7 +45,6 @@ export function AdminPanel() {
 
   // Authentication state
   const [password, setPassword] = useState('');
-  const [username, setUsername] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loginError, setLoginError] = useState('');
 
@@ -73,16 +72,15 @@ export function AdminPanel() {
     setPriceForm(state.prices);
   }, [state.prices]);
 
-  const correctUsername = 'root';
-  const correctPassword = 'video';
+  const correctPassword = 'admin123';
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (username === correctUsername && password === correctPassword) {
+    if (password === correctPassword) {
       login();
       setLoginError('');
     } else {
-      setLoginError('Usuario o contraseña incorrectos');
+      setLoginError('Contraseña incorrecta');
     }
   };
 
@@ -498,20 +496,7 @@ export function AdminPanel() {
           <form onSubmit={handleLogin} className="p-6 space-y-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Usuario
-              </label>
-              <input
-                type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="Ingrese el usuario"
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Contraseña
+                Contraseña de Administrador
               </label>
               <div className="relative">
                 <input
