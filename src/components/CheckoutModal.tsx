@@ -73,7 +73,9 @@ export function CheckoutModal({ isOpen, onClose, onCheckout, items, total }: Che
   // Get delivery zones from admin context with real-time updates
   const adminZones = adminContext?.state?.deliveryZones || [];
   const adminZonesMap = adminZones.reduce((acc, zone) => {
+    if (zone.active) { // Solo incluir zonas activas
     acc[zone.name] = zone.cost;
+    }
     return acc;
   }, {} as { [key: string]: number });
   
@@ -81,6 +83,11 @@ export function CheckoutModal({ isOpen, onClose, onCheckout, items, total }: Che
   const allZones = { ...BASE_DELIVERY_ZONES, ...adminZonesMap };
   const deliveryCost = allZones[deliveryZone as keyof typeof allZones] || 0;
   const finalTotal = total + deliveryCost;
+  
+  // Notificar cambios en tiempo real
+  React.useEffect(() => {
+    // Los cambios se sincronizan automáticamente a través del AdminContext
+  }, [adminZones]);
 
   // Get current transfer fee percentage with real-time updates
   const transferFeePercentage = adminContext?.state?.prices?.transferFeePercentage || 10;

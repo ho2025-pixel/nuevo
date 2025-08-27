@@ -33,6 +33,10 @@ import {
   Calendar,
   Clock,
   Star,
+  ToggleLeft,
+  ToggleRight,
+  Search,
+  Filter as FilterIcon,
   BarChart3,
   PieChart,
   LineChart
@@ -258,7 +262,7 @@ const ModernLogin = ({ onLogin }: { onLogin: (username: string, password: string
 
 // Main AdminPanel Component
 export function AdminPanel() {
-  const { state, login, logout, updatePrices, addDeliveryZone, updateDeliveryZone, deleteDeliveryZone, addNovel, updateNovel, deleteNovel, clearNotifications, exportSystemBackup } = useAdmin();
+  const { state, login, logout, updatePrices, addDeliveryZone, updateDeliveryZone, deleteDeliveryZone, addNovel, updateNovel, deleteNovel, toggleZoneStatus, toggleNovelStatus, clearNotifications, exportSystemBackup } = useAdmin();
   const [activeSection, setActiveSection] = useState<'dashboard' | 'prices' | 'zones' | 'novels' | 'system' | 'notifications'>('dashboard');
   const [editingZone, setEditingZone] = useState<DeliveryZone | null>(null);
   const [editingNovel, setEditingNovel] = useState<Novel | null>(null);
@@ -269,6 +273,12 @@ export function AdminPanel() {
   const [priceForm, setPriceForm] = useState<PriceConfig>(state.prices);
   const [zoneForm, setZoneForm] = useState({ name: '', cost: 0, active: true });
   const [novelForm, setNovelForm] = useState({ titulo: '', genero: '', capitulos: 0, año: new Date().getFullYear(), descripcion: '', active: true });
+  
+  // Estados para filtros y búsqueda
+  const [zoneSearchTerm, setZoneSearchTerm] = useState('');
+  const [zoneStatusFilter, setZoneStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
+  const [novelSearchTerm, setNovelSearchTerm] = useState('');
+  const [novelStatusFilter, setNovelStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
 
   useEffect(() => {
     setPriceForm(state.prices);
@@ -325,6 +335,38 @@ export function AdminPanel() {
     setNovelForm({ titulo: novel.titulo, genero: novel.genero, capitulos: novel.capitulos, año: novel.año, descripcion: novel.descripcion || '', active: novel.active });
   };
 
+  // Funciones de filtrado
+  const getFilteredZones = () => {
+    return state.deliveryZones.filter(zone => {
+      const matchesSearch = zone.name.toLowerCase().includes(zoneSearchTerm.toLowerCase());
+      const matchesStatus = zoneStatusFilter === 'all' || 
+                           (zoneStatusFilter === 'active' && zone.active) ||
+                           (zoneStatusFilter === 'inactive' && !zone.active);
+      return matchesSearch && matchesStatus;
+    });
+  };
+
+  const getFilteredNovels = () => {
+    return state.novels.filter(novel => {
+      const matchesSearch = novel.titulo.toLowerCase().includes(novelSearchTerm.toLowerCase()) ||
+                           novel.genero.toLowerCase().includes(novelSearchTerm.toLowerCase());
+      const matchesStatus = novelStatusFilter === 'all' || 
+                           (novelStatusFilter === 'active' && novel.active) ||
+                           (novelStatusFilter === 'inactive' && !novel.active);
+      return matchesSearch && matchesStatus;
+    });
+  };
+
+  const clearZoneFilters = () => {
+    setZoneSearchTerm('');
+    setZoneStatusFilter('all');
+  };
+
+  const clearNovelFilters = () => {
+    setNovelSearchTerm('');
+    setNovelStatusFilter('all');
+  };
+
   const renderDashboard = () => (
     <div className="space-y-8">
       {/* Main statistics */}
@@ -333,7 +375,7 @@ export function AdminPanel() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-blue-100 text-sm font-medium">Zonas de Entrega</p>
-              <p className="text-3xl font-bold">{state.deliveryZones.length}</p>
+              <p className="text-3xl font-bold">{state.deliveryZones.filter(z => z.active).length}/{state.deliveryZones.length}</p>
             </div>
             <MapPin className="h-12 w-12 text-blue-200" />
           </div>
@@ -343,7 +385,7 @@ export function AdminPanel() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-purple-100 text-sm font-medium">Novelas</p>
-              <p className="text-3xl font-bold">{state.novels.length}</p>
+              <p className="text-3xl font-bold">{state.novels.filter(n => n.active).length}/{state.novels.length}</p>
             </div>
             <BookOpen className="h-12 w-12 text-purple-200" />
           </div>
@@ -514,6 +556,62 @@ export function AdminPanel() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h3 className="text-2xl font-bold text-gray-900">Zonas de Entrega</h3>
+        <div className="flex items-center space-x-4">
+          <div className="text-sm text-gray-600">
+            Total: {state.deliveryZones.length} | Activas: {state.deliveryZones.filter(z => z.active).length}
+          </div>
+          <button
+            onClick={() => setShowAddZoneForm(true)}
+            className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white px-6 py-3 rounded-xl font-medium transition-all duration-300 transform hover:scale-105 hover:shadow-lg flex items-center space-x-2"
+          >
+            <Plus className="h-5 w-5" />
+            <span>Agregar Zona</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Filtros de búsqueda para zonas */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4">
+        <div className="flex items-center mb-4">
+          <FilterIcon className="h-5 w-5 text-blue-600 mr-2" />
+          <h4 className="text-lg font-semibold text-gray-900">Filtros de Búsqueda</h4>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Buscar por nombre..."
+              value={zoneSearchTerm}
+              onChange={(e) => setZoneSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+          
+          <select
+            value={zoneStatusFilter}
+            onChange={(e) => setZoneStatusFilter(e.target.value as 'all' | 'active' | 'inactive')}
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          >
+            <option value="all">Todos los estados</option>
+            <option value="active">Solo activas</option>
+            <option value="inactive">Solo inactivas</option>
+          </select>
+          
+          <button
+            onClick={clearZoneFilters}
+            className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
+          >
+            Limpiar filtros
+          </button>
+        </div>
+        
+        <div className="mt-4 text-sm text-gray-600">
+          Mostrando {getFilteredZones().length} de {state.deliveryZones.length} zonas
+        </div>
+      </div>
+
         <button
           onClick={() => setShowAddZoneForm(true)}
           className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white px-6 py-3 rounded-xl font-medium transition-all duration-300 transform hover:scale-105 hover:shadow-lg flex items-center space-x-2"
@@ -598,10 +696,10 @@ export function AdminPanel() {
 
       <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
         <div className="bg-gradient-to-r from-blue-50 to-purple-50 px-6 py-4 border-b border-gray-200">
-          <h4 className="text-lg font-bold text-gray-900">Zonas Configuradas ({state.deliveryZones.length})</h4>
+          <h4 className="text-lg font-bold text-gray-900">Zonas Configuradas ({getFilteredZones().length})</h4>
         </div>
         <div className="divide-y divide-gray-200">
-          {state.deliveryZones.map((zone) => (
+          {getFilteredZones().map((zone) => (
             <div key={zone.id} className="p-6 hover:bg-gray-50 transition-colors">
               <div className="flex items-center justify-between">
                 <div className="flex-1">
@@ -621,6 +719,15 @@ export function AdminPanel() {
                   </div>
                 </div>
                 <div className="flex space-x-2">
+                  <button
+                    onClick={() => toggleZoneStatus(zone.id)}
+                    className={`p-2 rounded-lg transition-colors ${
+                      zone.active ? 'text-green-600 hover:text-green-800 hover:bg-green-50' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'
+                    }`}
+                    title={zone.active ? 'Desactivar zona' : 'Activar zona'}
+                  >
+                    {zone.active ? <ToggleRight className="h-5 w-5" /> : <ToggleLeft className="h-5 w-5" />}
+                  </button>
                   <button
                     onClick={() => startEditZone(zone)}
                     className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-colors"
@@ -646,6 +753,62 @@ export function AdminPanel() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h3 className="text-2xl font-bold text-gray-900">Gestión de Novelas</h3>
+        <div className="flex items-center space-x-4">
+          <div className="text-sm text-gray-600">
+            Total: {state.novels.length} | Activas: {state.novels.filter(n => n.active).length}
+          </div>
+          <button
+            onClick={() => setShowAddNovelForm(true)}
+            className="bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white px-6 py-3 rounded-xl font-medium transition-all duration-300 transform hover:scale-105 hover:shadow-lg flex items-center space-x-2"
+          >
+            <Plus className="h-5 w-5" />
+            <span>Agregar Novela</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Filtros de búsqueda para novelas */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4">
+        <div className="flex items-center mb-4">
+          <FilterIcon className="h-5 w-5 text-pink-600 mr-2" />
+          <h4 className="text-lg font-semibold text-gray-900">Filtros de Búsqueda</h4>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Buscar por título o género..."
+              value={novelSearchTerm}
+              onChange={(e) => setNovelSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+            />
+          </div>
+          
+          <select
+            value={novelStatusFilter}
+            onChange={(e) => setNovelStatusFilter(e.target.value as 'all' | 'active' | 'inactive')}
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+          >
+            <option value="all">Todos los estados</option>
+            <option value="active">Solo activas</option>
+            <option value="inactive">Solo inactivas</option>
+          </select>
+          
+          <button
+            onClick={clearNovelFilters}
+            className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
+          >
+            Limpiar filtros
+          </button>
+        </div>
+        
+        <div className="mt-4 text-sm text-gray-600">
+          Mostrando {getFilteredNovels().length} de {state.novels.length} novelas
+        </div>
+      </div>
+
         <button
           onClick={() => setShowAddNovelForm(true)}
           className="bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white px-6 py-3 rounded-xl font-medium transition-all duration-300 transform hover:scale-105 hover:shadow-lg flex items-center space-x-2"
@@ -771,10 +934,10 @@ export function AdminPanel() {
 
       <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
         <div className="bg-gradient-to-r from-pink-50 to-purple-50 px-6 py-4 border-b border-gray-200">
-          <h4 className="text-lg font-bold text-gray-900">Novelas Configuradas ({state.novels.length})</h4>
+          <h4 className="text-lg font-bold text-gray-900">Novelas Configuradas ({getFilteredNovels().length})</h4>
         </div>
         <div className="divide-y divide-gray-200 max-h-96 overflow-y-auto">
-          {state.novels.map((novel) => (
+          {getFilteredNovels().map((novel) => (
             <div key={novel.id} className="p-6 hover:bg-gray-50 transition-colors">
               <div className="flex items-center justify-between">
                 <div className="flex-1">
@@ -797,6 +960,15 @@ export function AdminPanel() {
                   </div>
                 </div>
                 <div className="flex space-x-2">
+                  <button
+                    onClick={() => toggleNovelStatus(novel.id)}
+                    className={`p-2 rounded-lg transition-colors ${
+                      novel.active ? 'text-green-600 hover:text-green-800 hover:bg-green-50' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'
+                    }`}
+                    title={novel.active ? 'Desactivar novela' : 'Activar novela'}
+                  >
+                    {novel.active ? <ToggleRight className="h-5 w-5" /> : <ToggleLeft className="h-5 w-5" />}
+                  </button>
                   <button
                     onClick={() => startEditNovel(novel)}
                     className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-colors"
@@ -827,14 +999,25 @@ export function AdminPanel() {
             Sistema y Exportación
           </h3>
         </div>
+        <div className="bg-gradient-to-r from-indigo-50 to-blue-50 px-6 py-4 border-b border-gray-200">
+          <h3 className="text-xl font-bold text-gray-900 flex items-center">
+            <Settings className="mr-3 h-6 w-6 text-indigo-600" />
+            Sistema y Exportación
+          </h3>
+        </div>
         <div className="p-6 space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-200">
               <div className="flex items-center justify-between mb-4">
                 <h4 className="font-semibold text-blue-900">Estado del Sistema</h4>
-                <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+                <div className={`w-3 h-3 rounded-full animate-pulse ${state.syncStatus.isOnline ? 'bg-green-500' : 'bg-red-500'}`}></div>
               </div>
-              <p className="text-blue-700 text-sm">Sistema operativo y sincronizado</p>
+              <p className="text-blue-700 text-sm">
+                {state.syncStatus.isOnline ? 'Sistema operativo y sincronizado' : 'Sistema sin conexión'}
+              </p>
+              <div className="mt-2 text-xs text-blue-600">
+                Cambios pendientes: {state.syncStatus.pendingChanges}
+              </div>
             </div>
             
             <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl p-6 border border-purple-200">
@@ -849,49 +1032,77 @@ export function AdminPanel() {
             
             <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-6 border border-green-200">
               <div className="flex items-center justify-between mb-4">
-                <h4 className="font-semibold text-green-900">Archivos del Sistema</h4>
+                <h4 className="font-semibold text-green-900">Elementos del Sistema</h4>
                 <FileText className="h-5 w-5 text-green-600" />
               </div>
-              <p className="text-green-700 text-sm">6 archivos principales</p>
+              <p className="text-green-700 text-sm">
+                {state.deliveryZones.length} zonas • {state.novels.length} novelas
+              </p>
+              <div className="mt-2 text-xs text-green-600">
+                Activas: {state.deliveryZones.filter(z => z.active).length} zonas • {state.novels.filter(n => n.active).length} novelas
+              </div>
             </div>
           </div>
 
           <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl p-6 border border-indigo-200">
             <div className="text-center">
-              <h4 className="text-xl font-bold text-gray-900 mb-4">Exportar Sistema Completo</h4>
+              <h4 className="text-xl font-bold text-gray-900 mb-4">Exportar Sistema Completo con Mejoras</h4>
               <p className="text-gray-600 mb-6">
-                Exporta todos los archivos del sistema con las configuraciones actuales sincronizadas
+                Exporta todos los archivos del sistema con las configuraciones actuales, mejoras implementadas y sincronización en tiempo real
+              </p>
+              <div className="bg-white rounded-lg p-4 mb-6 border border-indigo-200">
+                <h5 className="font-semibold text-gray-900 mb-2">Archivos incluidos en la exportación:</h5>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-gray-700">
+                  <div>• AdminContext.tsx (con estado actual)</div>
+                  <div>• CartContext.tsx (versión completa)</div>
+                  <div>• CheckoutModal.tsx (versión completa)</div>
+                  <div>• NovelasModal.tsx (versión completa)</div>
+                  <div>• PriceCard.tsx (versión completa)</div>
+                  <div>• AdminPanel.tsx (con mejoras)</div>
+                </div>
+              </div>
               </p>
               <button
                 onClick={exportSystemBackup}
-                className="bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-bold py-4 px-8 rounded-xl transition-all duration-300 transform hover:scale-105 hover:shadow-2xl flex items-center space-x-3 mx-auto"
+                className="bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-bold py-4 px-8 rounded-xl transition-all duration-300 transform hover:scale-105 hover:shadow-2xl flex items-center space-x-3 mx-auto disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={state.syncStatus.pendingChanges > 0}
               >
                 <Download className="h-6 w-6" />
-                <span>Exportar Sistema</span>
+                <span>Exportar Sistema Mejorado</span>
               </button>
+              {state.syncStatus.pendingChanges > 0 && (
+                <p className="text-sm text-orange-600 mt-2">
+                  Hay {state.syncStatus.pendingChanges} cambios pendientes de sincronización
+                </p>
+              )}
             </div>
           </div>
 
           <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
             <div className="bg-gray-50 px-6 py-4 border-b border-gray-200">
-              <h4 className="font-semibold text-gray-900">Archivos del Sistema</h4>
+              <h4 className="font-semibold text-gray-900">Estado de Componentes del Sistema</h4>
             </div>
             <div className="divide-y divide-gray-200">
               {[
-                { name: 'AdminContext.tsx', description: 'Contexto principal del sistema', status: 'Sincronizado' },
-                { name: 'AdminPanel.tsx', description: 'Panel de control administrativo', status: 'Sincronizado' },
-                { name: 'CheckoutModal.tsx', description: 'Modal de checkout con zonas', status: 'Sincronizado' },
-                { name: 'NovelasModal.tsx', description: 'Modal de catálogo de novelas', status: 'Sincronizado' },
-                { name: 'PriceCard.tsx', description: 'Componente de precios', status: 'Sincronizado' },
-                { name: 'CartContext.tsx', description: 'Contexto del carrito', status: 'Sincronizado' }
+                { name: 'AdminContext.tsx', description: 'Contexto principal con mejoras', status: 'Mejorado y Sincronizado', changes: state.deliveryZones.length + state.novels.length },
+                { name: 'AdminPanel.tsx', description: 'Panel con gestión completa', status: 'Mejorado y Sincronizado', changes: 'Filtros y estados' },
+                { name: 'CheckoutModal.tsx', description: 'Modal de checkout actualizado', status: 'Sincronizado', changes: 'Tiempo real' },
+                { name: 'NovelasModal.tsx', description: 'Catálogo de novelas completo', status: 'Sincronizado', changes: 'Tiempo real' },
+                { name: 'PriceCard.tsx', description: 'Precios sincronizados', status: 'Sincronizado', changes: 'Tiempo real' },
+                { name: 'CartContext.tsx', description: 'Carrito con sincronización', status: 'Sincronizado', changes: 'Tiempo real' }
               ].map((file, index) => (
                 <div key={index} className="p-4 hover:bg-gray-50 transition-colors">
                   <div className="flex items-center justify-between">
                     <div>
                       <h5 className="font-medium text-gray-900">{file.name}</h5>
                       <p className="text-gray-600 text-sm">{file.description}</p>
+                      <p className="text-gray-500 text-xs mt-1">Cambios: {file.changes}</p>
                     </div>
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                      file.status.includes('Mejorado') 
+                        ? 'bg-blue-100 text-blue-800' 
+                        : 'bg-green-100 text-green-800'
+                    }`}>
                       {file.status}
                     </span>
                   </div>

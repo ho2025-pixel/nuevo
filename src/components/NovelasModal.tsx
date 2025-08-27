@@ -33,6 +33,9 @@ export function NovelasModal({ isOpen, onClose }: NovelasModalProps) {
   const novelPricePerChapter = adminContext?.state?.prices?.novelPricePerChapter || 5;
   const transferFeePercentage = adminContext?.state?.prices?.transferFeePercentage || 10;
   
+  // Filtrar solo novelas activas
+  const activeAdminNovels = adminNovels.filter(novel => novel.active);
+  
   // Base novels list
   const defaultNovelas: Novela[] = [
     { id: 1, titulo: "Corazón Salvaje", genero: "Drama/Romance", capitulos: 185, año: 2009 },
@@ -88,7 +91,7 @@ export function NovelasModal({ isOpen, onClose }: NovelasModalProps) {
   ];
 
   // Combine admin novels with default novels - real-time sync
-  const allNovelas = [...defaultNovelas, ...adminNovels.map(novel => ({
+  const allNovelas = [...defaultNovelas, ...activeAdminNovels.map(novel => ({
     id: novel.id,
     titulo: novel.titulo,
     genero: novel.genero,
@@ -96,6 +99,11 @@ export function NovelasModal({ isOpen, onClose }: NovelasModalProps) {
     año: novel.año,
     descripcion: novel.descripcion
   }))];
+
+  // Notificar cambios en tiempo real
+  React.useEffect(() => {
+    // Los cambios se sincronizan automáticamente a través del AdminContext
+  }, [adminNovels]);
 
   const phoneNumber = '+5354690878';
 

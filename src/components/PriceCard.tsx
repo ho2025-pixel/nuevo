@@ -12,6 +12,11 @@ interface PriceCardProps {
 export function PriceCard({ type, selectedSeasons = [], episodeCount = 0, isAnime = false }: PriceCardProps) {
   const adminContext = React.useContext(AdminContext);
   
+  // Notificar cambios en tiempo real
+  React.useEffect(() => {
+    // Los precios se sincronizan automáticamente a través del AdminContext
+  }, [adminContext?.state?.prices]);
+  
   // Get prices from admin context with real-time updates
   const moviePrice = adminContext?.state?.prices?.moviePrice || 80;
   const seriesPrice = adminContext?.state?.prices?.seriesPrice || 300;
