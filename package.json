@@ -1,8 +1,9 @@
 {
-  "name": "vite-react-typescript-starter",
+  "name": "tv-a-la-carta-sistema-completo",
   "private": true,
-  "version": "0.0.0",
+  "version": "2.0.0",
   "type": "module",
+  "description": "Sistema completo de TV a la Carta con panel de administración sincronizado",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
