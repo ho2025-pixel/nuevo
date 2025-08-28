@@ -96,11 +96,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     type: 'success' | 'error';
     isVisible: boolean;
   }>({ message: '', type: 'success', isVisible: false });
-  
-  // Notificar cambios en tiempo real
-  React.useEffect(() => {
-    // Los precios se sincronizan automáticamente a través del AdminContext
-  }, [adminContext?.state?.prices]);
 
   // Clear cart on page refresh
   useEffect(() => {
