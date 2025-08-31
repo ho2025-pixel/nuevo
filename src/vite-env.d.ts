@@ -1,2 +1,1 @@
-// Archivo: src/vite-env.d.ts
-// Contenido del archivo actual
+/// <reference types="vite/client" />

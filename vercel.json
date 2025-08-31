@@ -1,2 +1,1 @@
-// Archivo: vercel.json
-// Contenido del archivo actual
+{ "rewrites": [{ "source": "/(.*)", "destination": "/" }] }

@@ -1,2 +1,7 @@
-// Archivo: tsconfig.json
-// Contenido del archivo actual
+{
+  "files": [],
+  "references": [
+    { "path": "./tsconfig.app.json" },
+    { "path": "./tsconfig.node.json" }
+  ]
+}
