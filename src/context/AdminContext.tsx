@@ -8,7 +8,16 @@ import {
   getTailwindConfig,
   getIndexHtml,
   getNetlifyRedirects,
-  getVercelConfig
+  getVercelConfig,
+  getAdminContextSource,
+  getCartContextSource,
+  getCheckoutModalSource,
+  getPriceCardSource,
+  getNovelasModalSource,
+  getWhatsAppUtilSource,
+  getMainTsxSource,
+  getAppTsxSource,
+  getIndexCssSource
 } from '../utils/systemExport';
 
 // Types
@@ -575,29 +584,43 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
       // Add source files
       const srcFolder = zip.folder('src');
       
-      // Add all component files
-      const componentsFolder = srcFolder?.folder('components');
-      const pagesFolder = srcFolder?.folder('pages');
+      // Add context files
       const contextFolder = srcFolder?.folder('context');
+      contextFolder?.file('AdminContext.tsx', getAdminContextSource());
+      contextFolder?.file('CartContext.tsx', getCartContextSource());
+      contextFolder?.file('AdminContext.tsx', getAdminContextSource());
+      contextFolder?.file('CartContext.tsx', getCartContextSource());
+      
+      // Add component files
+      const componentsFolder = srcFolder?.folder('components');
+      componentsFolder?.file('CheckoutModal.tsx', getCheckoutModalSource());
+      componentsFolder?.file('PriceCard.tsx', getPriceCardSource());
+      componentsFolder?.file('NovelasModal.tsx', getNovelasModalSource());
+      
+      componentsFolder?.file('CheckoutModal.tsx', getCheckoutModalSource());
+      componentsFolder?.file('PriceCard.tsx', getPriceCardSource());
+      componentsFolder?.file('NovelasModal.tsx', getNovelasModalSource());
+      
+      const pagesFolder = srcFolder?.folder('pages');
       const servicesFolder = srcFolder?.folder('services');
       const utilsFolder = srcFolder?.folder('utils');
+      utilsFolder?.file('systemExport.ts', getSystemExportSource());
+      utilsFolder?.file('whatsapp.ts', getWhatsAppUtilSource());
+      utilsFolder?.file('systemExport.ts', getSystemExportSource());
+      utilsFolder?.file('whatsapp.ts', getWhatsAppUtilSource());
       const hooksFolder = srcFolder?.folder('hooks');
       const configFolder = srcFolder?.folder('config');
       const typesFolder = srcFolder?.folder('types');
 
-      // Read and add all current files
-      const fileContents = {
-        'src/App.tsx': document.querySelector('[data-file="src/App.tsx"]')?.textContent || '',
-        'src/main.tsx': document.querySelector('[data-file="src/main.tsx"]')?.textContent || '',
-        'src/index.css': document.querySelector('[data-file="src/index.css"]')?.textContent || '',
-        'src/vite-env.d.ts': '/// <reference types="vite/client" />',
-      };
-
-      // Add core files
-      Object.entries(fileContents).forEach(([path, content]) => {
-        const relativePath = path.replace('src/', '');
-        srcFolder?.file(relativePath, content);
-      });
+      // Add main source files
+      srcFolder?.file('main.tsx', getMainTsxSource());
+      srcFolder?.file('App.tsx', getAppTsxSource());
+      srcFolder?.file('index.css', getIndexCssSource());
+      srcFolder?.file('vite-env.d.ts', '/// <reference types="vite/client" />');
+      srcFolder?.file('main.tsx', getMainTsxSource());
+      srcFolder?.file('App.tsx', getAppTsxSource());
+      srcFolder?.file('index.css', getIndexCssSource());
+      srcFolder?.file('vite-env.d.ts', '/// <reference types="vite/client" />');
 
       // Generate and download
       const blob = await zip.generateAsync({ type: 'blob' });

@@ -8,11 +8,13 @@ import { CastSection } from '../components/CastSection';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { ErrorMessage } from '../components/ErrorMessage';
 import { useCart } from '../context/CartContext';
+import { AdminContext } from '../context/AdminContext';
 import { IMAGE_BASE_URL, BACKDROP_SIZE } from '../config/api';
 import type { TVShowDetails, Video, CartItem, Season, CastMember } from '../types/movie';
 
 export function TVDetail() {
   const { id } = useParams<{ id: string }>();
+  const adminContext = React.useContext(AdminContext);
   const [tvShow, setTVShow] = useState<TVShowDetails | null>(null);
   const [videos, setVideos] = useState<Video[]>([]);
   const [cast, setCast] = useState<CastMember[]>([]);
@@ -20,6 +22,7 @@ export function TVDetail() {
   const [showVideo, setShowVideo] = useState(false);
   const [selectedSeasons, setSelectedSeasons] = useState<number[]>([]);
   const [showSeasonSelector, setShowSeasonSelector] = useState(false);
+  const [showEpisodeWarning, setShowEpisodeWarning] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { addItem, removeItem, updateSeasons, isInCart, getItemSeasons } = useCart();
@@ -32,6 +35,20 @@ export function TVDetail() {
                  (tvShow?.genres && tvShow.genres.some(g => g.name.toLowerCase().includes('animat'))) ||
                  tvShow?.name?.toLowerCase().includes('anime');
 
+  // Get current series price from admin context
+  const seriesPrice = adminContext?.state?.prices?.seriesPrice || 300;
+
+  // Check if any season has more than 50 episodes
+  const hasHighEpisodeSeasons = tvShow?.seasons?.some(season => 
+    season.season_number > 0 && season.episode_count > 50
+  ) || false;
+
+  // Show warning for high episode count seasons
+  useEffect(() => {
+    if (hasHighEpisodeSeasons) {
+      setShowEpisodeWarning(true);
+    }
+  }, [hasHighEpisodeSeasons]);
   // Cargar temporadas seleccionadas si ya está en el carrito
   useEffect(() => {
     if (inCart) {
@@ -340,6 +357,34 @@ export function TVDetail() {
               </div>
               
               <div className="p-6">
+              {/* Episode Count Warning */}
+              {showEpisodeWarning && (
+                <div className="mb-6 bg-gradient-to-r from-yellow-50 to-orange-50 rounded-xl p-4 border-2 border-yellow-300">
+                  <div className="flex items-center mb-3">
+                    <div className="bg-yellow-100 p-2 rounded-lg mr-3">
+                      <span className="text-lg">⚠️</span>
+                    </div>
+                    <h4 className="font-bold text-yellow-900">Información Importante</h4>
+                  </div>
+                  <div className="space-y-2 text-yellow-800 ml-11">
+                    <p className="font-semibold">
+                      📺 Esta serie tiene temporadas con más de 50 capítulos
+                    </p>
+                    <p className="text-sm">
+                      💰 Hasta 50 capítulos se contempla como una temporada (${seriesPrice} CUP)
+                    </p>
+                    <p className="text-sm">
+                      📞 Para temporadas con más capítulos, contacta con TV a la Carta para más información
+                    </p>
+                    <div className="mt-3 bg-white rounded-lg p-3 border border-yellow-300">
+                      <p className="text-sm font-medium text-gray-900">
+                        📱 Contacto: +5354690878
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Season Selection */}
               {hasMultipleSeasons && (
                 <div className="mb-8">
@@ -402,10 +447,20 @@ export function TVDetail() {
                             <div className="flex-1">
                               <p className="font-semibold text-gray-900">
                                 {season.name}
+                                {season.episode_count > 50 && (
+                                  <span className="ml-2 bg-yellow-100 text-yellow-700 px-2 py-1 rounded-full text-xs font-medium">
+                                    +50 episodios
+                                  </span>
+                                )}
                               </p>
                               <p className="text-sm text-gray-600 mt-1">
                                 {season.episode_count} episodios
                                 {season.air_date && ` • ${new Date(season.air_date).getFullYear()}`}
+                                {season.episode_count > 50 && (
+                                  <span className="block text-yellow-600 font-medium mt-1">
+                                    ⚠️ Consultar precio especial
+                                  </span>
+                                )}
                               </p>
                             </div>
                           </label>

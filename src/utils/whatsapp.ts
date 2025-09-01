@@ -84,6 +84,7 @@ export function sendOrderToWhatsApp(orderData: OrderData): void {
   }
   
   message += `🚚 Entrega (${deliveryZone.split(' > ')[2]}): +$${deliveryCost.toLocaleString()} CUP\n`;
+  message += `🚚 Entrega (${deliveryZone.split(' > ')[2] || deliveryZone}): +$${deliveryCost.toLocaleString()} CUP\n`;
   message += `\n🎯 *TOTAL FINAL: $${total.toLocaleString()} CUP*\n\n`;
   
   message += `📍 *ZONA DE ENTREGA:*\n`;
