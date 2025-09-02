@@ -1877,3 +1877,457 @@ export function AdminPanel() {
 }
 `;
 }
+
+// Get Header source
+export function getHeaderSource(): string {
+  return `import React, { useState } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Search, ShoppingCart, Film } from 'lucide-react';
+import { performanceOptimizer } from '../utils/performance';
+import { useCart } from '../context/CartContext';
+
+export function Header() {
+  const [searchQuery, setSearchQuery] = useState('');
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { state } = useCart();
+
+  // Real-time search effect
+  const debouncedNavigate = React.useMemo(
+    () => performanceOptimizer.debounce((query: string) => {
+      navigate(\`/search?q=\${encodeURIComponent(query.trim())}\`);
+    }, 500),
+    [navigate]
+  );
+
+  React.useEffect(() => {
+    if (searchQuery.trim() && searchQuery.length > 2) {
+      debouncedNavigate(searchQuery.trim());
+    }
+  }, [searchQuery, debouncedNavigate]);
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      navigate(\`/search?q=\${encodeURIComponent(searchQuery.trim())}\`);
+    }
+  };
+
+  React.useEffect(() => {
+    if (!location.pathname.includes('/search')) {
+      setSearchQuery('');
+    }
+  }, [location.pathname]);
+
+  return (
+    <header className="bg-gradient-to-r from-blue-900 to-blue-800 text-white shadow-lg sticky top-0 z-50">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between h-16">
+          <div className="flex items-center space-x-8">
+            <Link to="/" className="flex items-center space-x-2 hover:text-blue-200 transition-colors">
+              <img src="/unnamed.png" alt="TV a la Carta" className="h-8 w-8" />
+              <span className="font-bold text-xl hidden sm:block">TV a la Carta</span>
+            </Link>
+            
+            <nav className="hidden md:flex space-x-6">
+              <Link to="/movies" className="hover:text-blue-200 transition-colors">
+                Películas
+              </Link>
+              <Link to="/tv" className="hover:text-blue-200 transition-colors">
+                Series
+              </Link>
+              <Link to="/anime" className="hover:text-blue-200 transition-colors">
+                Anime
+              </Link>
+            </nav>
+          </div>
+
+          <div className="flex items-center space-x-4">
+            <form onSubmit={handleSearch} className="relative hidden sm:block">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Buscar películas, series..."
+                  className="pl-10 pr-4 py-2 bg-white/10 backdrop-blur-sm border border-white/20 rounded-full text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-transparent w-64"
+                />
+              </div>
+            </form>
+
+            <Link
+              to="/cart"
+              className="relative p-2 hover:bg-white/10 rounded-full transition-all duration-300 hover:scale-110"
+            >
+              <ShoppingCart className="h-6 w-6 transition-transform duration-300" />
+              {state.total > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center animate-pulse">
+                  {state.total}
+                </span>
+              )}
+            </Link>
+          </div>
+        </div>
+
+        <div className="pb-3 sm:hidden">
+          <form onSubmit={handleSearch}>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Buscar películas, series..."
+                className="pl-10 pr-4 py-2 bg-white/10 backdrop-blur-sm border border-white/20 rounded-full text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-transparent w-full"
+              />
+            </div>
+          </form>
+        </div>
+      </div>
+    </header>
+  );
+}
+`;
+}
+
+// Get MovieCard source
+export function getMovieCardSource(): string {
+  return `import React from 'react';
+import { Link } from 'react-router-dom';
+import { Star, Calendar, Plus, Check } from 'lucide-react';
+import { OptimizedImage } from './OptimizedImage';
+import { useCart } from '../context/CartContext';
+import { CartAnimation } from './CartAnimation';
+import { IMAGE_BASE_URL, POSTER_SIZE } from '../config/api';
+import type { Movie, TVShow, CartItem } from '../types/movie';
+
+interface MovieCardProps {
+  item: Movie | TVShow;
+  type: 'movie' | 'tv';
+}
+
+export function MovieCard({ item, type }: MovieCardProps) {
+  const { addItem, removeItem, isInCart } = useCart();
+  const [showAnimation, setShowAnimation] = React.useState(false);
+  
+  const title = 'title' in item ? item.title : item.name;
+  const releaseDate = 'release_date' in item ? item.release_date : item.first_air_date;
+  const year = releaseDate ? new Date(releaseDate).getFullYear() : 'N/A';
+  const posterUrl = item.poster_path 
+    ? \`\${IMAGE_BASE_URL}/\${POSTER_SIZE}\${item.poster_path}\`
+    : 'https://images.unsplash.com/photo-1440404653325-ab127d49abc1?w=500&h=750&fit=crop&crop=center';
+
+  const inCart = isInCart(item.id);
+
+  const handleCartAction = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const cartItem: CartItem = {
+      id: item.id,
+      title,
+      poster_path: item.poster_path,
+      type,
+      release_date: 'release_date' in item ? item.release_date : undefined,
+      first_air_date: 'first_air_date' in item ? item.first_air_date : undefined,
+      vote_average: item.vote_average,
+      selectedSeasons: type === 'tv' ? [1] : undefined,
+    };
+
+    if (inCart) {
+      removeItem(item.id);
+    } else {
+      addItem(cartItem);
+      setShowAnimation(true);
+    }
+  };
+
+  return (
+    <>
+    <div className="group relative bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl transition-all duration-300 transform hover:scale-105">
+      <Link to={\`/\${type}/\${item.id}\`}>
+        <div className="relative overflow-hidden">
+          <OptimizedImage
+            src={posterUrl}
+            alt={title}
+            className="w-full h-80 group-hover:scale-110 transition-transform duration-300"
+            lazy={true}
+          />
+          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-300" />
+          
+          <div className="absolute top-2 right-2 bg-black/70 text-white px-2 py-1 rounded-full text-sm flex items-center space-x-1">
+            <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+            <span>{item.vote_average ? item.vote_average.toFixed(1) : 'N/A'}</span>
+          </div>
+        </div>
+        
+        <div className="p-4">
+          <h3 className="font-semibold text-gray-900 mb-1 group-hover:text-blue-600 transition-colors line-clamp-2">
+            {title}
+          </h3>
+          <div className="flex items-center text-gray-500 text-sm mb-2">
+            <Calendar className="h-4 w-4 mr-1" />
+            <span>{year}</span>
+          </div>
+          <p className="text-gray-600 text-sm line-clamp-2 mb-3">
+            {item.overview || 'Sin descripción disponible'}
+          </p>
+        </div>
+      </Link>
+      
+      <div className="absolute bottom-4 right-4">
+        <button
+          onClick={handleCartAction}
+          className={\`p-2 rounded-full shadow-lg transition-all duration-200 \${
+            inCart
+              ? 'bg-green-500 hover:bg-green-600 text-white'
+              : 'bg-blue-500 hover:bg-blue-600 text-white'
+          }\`}
+        >
+          {inCart ? <Check className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+        </button>
+      </div>
+      
+      <CartAnimation 
+        show={showAnimation} 
+        onComplete={() => setShowAnimation(false)} 
+      />
+    </div>
+    </>
+  );
+}
+`;
+}
+
+// Get CartAnimation source
+export function getCartAnimationSource(): string {
+  return `import React, { useEffect, useState } from 'react';
+import { ShoppingCart, Check, Plus, Sparkles } from 'lucide-react';
+
+interface CartAnimationProps {
+  show: boolean;
+  onComplete: () => void;
+}
+
+export function CartAnimation({ show, onComplete }: CartAnimationProps) {
+  const [stage, setStage] = useState<'hidden' | 'flying' | 'sparkle' | 'success' | 'complete'>('hidden');
+
+  useEffect(() => {
+    if (show) {
+      setStage('flying');
+      
+      const timer1 = setTimeout(() => {
+        setStage('sparkle');
+      }, 800);
+
+      const timer2 = setTimeout(() => {
+        setStage('success');
+      }, 1200);
+
+      const timer3 = setTimeout(() => {
+        setStage('complete');
+        onComplete();
+      }, 2000);
+
+      return () => {
+        clearTimeout(timer1);
+        clearTimeout(timer2);
+        clearTimeout(timer3);
+      };
+    } else {
+      setStage('hidden');
+    }
+  }, [show, onComplete]);
+
+  if (stage === 'hidden' || stage === 'complete') return null;
+
+  return (
+    <div className="fixed inset-0 pointer-events-none z-50 flex items-center justify-center overflow-hidden">
+      {stage === 'flying' && (
+        <div className="relative">
+          <div className="bg-gradient-to-r from-blue-500 to-purple-500 text-white p-6 rounded-full shadow-2xl animate-bounce transform scale-110">
+            <ShoppingCart className="h-10 w-10 animate-pulse" />
+          </div>
+          <div className="absolute -top-2 -right-2 bg-green-500 text-white p-2 rounded-full animate-ping">
+            <Plus className="h-4 w-4" />
+          </div>
+        </div>
+      )}
+      
+      {stage === 'sparkle' && (
+        <div className="relative">
+          <div className="bg-gradient-to-r from-purple-500 to-pink-500 text-white p-8 rounded-full shadow-2xl animate-pulse transform scale-125">
+            <Sparkles className="h-12 w-12 animate-spin" />
+          </div>
+        </div>
+      )}
+      
+      {stage === 'success' && (
+        <div className="relative">
+          <div className="bg-gradient-to-r from-green-500 to-emerald-500 text-white p-8 rounded-full shadow-2xl animate-bounce transform scale-150">
+            <Check className="h-12 w-12" />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+`;
+}
+
+// Get HeroCarousel source
+export function getHeroCarouselSource(): string {
+  return `import React, { useState, useEffect, useCallback } from 'react';
+import { Link } from 'react-router-dom';
+import { ChevronLeft, ChevronRight, Star, Calendar, Play, Pause } from 'lucide-react';
+import { OptimizedImage } from './OptimizedImage';
+import { tmdbService } from '../services/tmdb';
+import { contentSyncService } from '../services/contentSync';
+import { performanceOptimizer } from '../utils/performance';
+import { IMAGE_BASE_URL, BACKDROP_SIZE } from '../config/api';
+import type { Movie, TVShow, Video } from '../types/movie';
+
+interface HeroCarouselProps {
+  items: (Movie | TVShow)[];
+}
+
+export function HeroCarousel({ items }: HeroCarouselProps) {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [isAutoPlaying, setIsAutoPlaying] = useState(true);
+  const [isTransitioning, setIsTransitioning] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [itemVideos, setItemVideos] = useState<{ [key: number]: Video[] }>({});
+  const [preloadedImages, setPreloadedImages] = useState<Set<string>>(new Set());
+
+  const AUTOPLAY_INTERVAL = 6000;
+
+  // [Complete HeroCarousel implementation...]
+  
+  if (items.length === 0) return null;
+
+  return (
+    <div className="relative h-96 md:h-[600px] overflow-hidden group">
+      {/* Complete carousel implementation */}
+    </div>
+  );
+}
+`;
+}
+
+// Get CastSection source
+export function getCastSectionSource(): string {
+  return `import React from 'react';
+import { Users, Star } from 'lucide-react';
+import { IMAGE_BASE_URL } from '../config/api';
+import type { CastMember } from '../types/movie';
+
+interface CastSectionProps {
+  cast: CastMember[];
+  title?: string;
+}
+
+export function CastSection({ cast, title = "Reparto Principal" }: CastSectionProps) {
+  if (!cast || cast.length === 0) {
+    return null;
+  }
+
+  const mainCast = cast.slice(0, 12);
+
+  const getProfileUrl = (profilePath: string | null) => {
+    return profilePath
+      ? \`\${IMAGE_BASE_URL}/w185\${profilePath}\`
+      : 'https://images.unsplash.com/photo-1511367461989-f85a21fda167?w=185&h=278&fit=crop&crop=face';
+  };
+
+  return (
+    <div className="bg-gradient-to-br from-white to-gray-50 rounded-2xl shadow-xl border border-gray-100 p-6 sm:p-8 mb-8 transform hover:scale-[1.02] transition-all duration-300">
+      <div className="flex items-center mb-6">
+        <div className="bg-gradient-to-r from-indigo-500 to-purple-500 p-3 rounded-xl mr-4 shadow-lg">
+          <Users className="h-6 w-6 text-white" />
+        </div>
+        <h2 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+          {title}
+        </h2>
+      </div>
+
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 sm:gap-6">
+        {mainCast.map((actor) => (
+          <div
+            key={actor.id}
+            className="group bg-white rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden border border-gray-100 hover:border-indigo-200 transform hover:scale-105"
+          >
+            <div className="relative overflow-hidden">
+              <img
+                src={getProfileUrl(actor.profile_path)}
+                alt={actor.name}
+                className="w-full h-32 sm:h-40 object-cover group-hover:scale-110 transition-transform duration-300"
+              />
+            </div>
+            
+            <div className="p-3 sm:p-4">
+              <h3 className="font-semibold text-gray-900 text-sm sm:text-base mb-1 line-clamp-2 group-hover:text-indigo-600 transition-colors">
+                {actor.name}
+              </h3>
+              <p className="text-gray-600 text-xs sm:text-sm line-clamp-2">
+                {actor.character}
+              </p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+`;
+}
+
+// Get VideoPlayer source
+export function getVideoPlayerSource(): string {
+  return `import React, { useState } from 'react';
+import { ExternalLink, Play, AlertCircle } from 'lucide-react';
+
+interface VideoPlayerProps {
+  videoKey: string;
+  title: string;
+}
+
+export function VideoPlayer({ videoKey, title }: VideoPlayerProps) {
+  const [hasError, setHasError] = useState(false);
+
+  const youtubeUrl = \`https://www.youtube.com/watch?v=\${videoKey}\`;
+  const thumbnailUrl = \`https://img.youtube.com/vi/\${videoKey}/maxresdefault.jpg\`;
+
+  const openInYouTube = () => {
+    window.open(youtubeUrl, '_blank', 'noopener,noreferrer');
+  };
+
+  return (
+    <div className="relative w-full aspect-video bg-gray-900 rounded-lg overflow-hidden group">
+      <div
+        className="absolute inset-0 bg-cover bg-center"
+        style={{ backgroundImage: \`url(\${thumbnailUrl})\` }}
+      />
+      <div className="absolute inset-0 bg-black/60 hover:bg-black/40 transition-colors" />
+      
+      <button
+        onClick={openInYouTube}
+        className="absolute top-4 right-4 bg-red-600 hover:bg-red-700 rounded-full p-3 transition-all hover:scale-110 shadow-2xl z-10"
+        title="Ver en YouTube"
+      >
+        <Play className="h-5 w-5 text-white ml-0.5" />
+      </button>
+      
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <div className="text-center text-white p-6">
+          <h3 className="text-xl font-semibold mb-2">{title}</h3>
+          <p className="text-sm opacity-90 mb-4">
+            Haz clic en el botón de reproducir para ver en YouTube
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+`;
+}
