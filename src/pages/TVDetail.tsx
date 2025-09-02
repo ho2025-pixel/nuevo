@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Star, Calendar, Tv, Plus, X, Play, ChevronDown } from 'lucide-react';
+import { ArrowLeft, Star, Calendar, Tv, Plus, X, Play, ChevronDown, Monitor, Rocket, Film, Clock2, Globe, Users, Building, MapPin } from 'lucide-react';
 import { tmdbService } from '../services/tmdb';
 import { VideoPlayer } from '../components/VideoPlayer';
 import { PriceCard } from '../components/PriceCard';
@@ -22,10 +22,12 @@ export function TVDetail() {
   const [showVideo, setShowVideo] = useState(false);
   const [selectedSeasons, setSelectedSeasons] = useState<number[]>([]);
   const [showSeasonSelector, setShowSeasonSelector] = useState(false);
-  const [showEpisodeWarning, setShowEpisodeWarning] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { addItem, removeItem, updateSeasons, isInCart, getItemSeasons } = useCart();
+
+  // Get current prices with real-time updates
+  const seriesPrice = adminContext?.state?.prices?.seriesPrice || 300;
 
   const tvId = parseInt(id || '0');
   const inCart = isInCart(tvId);
@@ -35,20 +37,6 @@ export function TVDetail() {
                  (tvShow?.genres && tvShow.genres.some(g => g.name.toLowerCase().includes('animat'))) ||
                  tvShow?.name?.toLowerCase().includes('anime');
 
-  // Get current series price from admin context
-  const seriesPrice = adminContext?.state?.prices?.seriesPrice || 300;
-
-  // Check if any season has more than 50 episodes
-  const hasHighEpisodeSeasons = tvShow?.seasons?.some(season => 
-    season.season_number > 0 && season.episode_count > 50
-  ) || false;
-
-  // Show warning for high episode count seasons
-  useEffect(() => {
-    if (hasHighEpisodeSeasons) {
-      setShowEpisodeWarning(true);
-    }
-  }, [hasHighEpisodeSeasons]);
   // Cargar temporadas seleccionadas si ya está en el carrito
   useEffect(() => {
     if (inCart) {
@@ -354,37 +342,23 @@ export function TVDetail() {
                   </div>
                   Detalles de la Serie
                 </h3>
+                
+                {/* Episode count warning for series with 50+ episodes */}
+                {tvShow.number_of_episodes > 50 && (
+                  <div className="mt-4 p-3 bg-yellow-100/20 backdrop-blur-sm rounded-lg border border-yellow-300/30">
+                    <div className="flex items-center mb-2">
+                      <span className="text-yellow-300 mr-2">⚠️</span>
+                      <span className="text-sm font-semibold">Información Importante</span>
+                    </div>
+                    <p className="text-xs text-yellow-100 leading-relaxed">
+                      Esta serie tiene {tvShow.number_of_episodes} episodios. Hasta 50 episodios se contempla como una temporada (${seriesPrice} CUP). 
+                      Para más episodios, contacte con TV a la Carta para información adicional.
+                    </p>
+                  </div>
+                )}
               </div>
               
               <div className="p-6">
-              {/* Episode Count Warning */}
-              {showEpisodeWarning && (
-                <div className="mb-6 bg-gradient-to-r from-yellow-50 to-orange-50 rounded-xl p-4 border-2 border-yellow-300">
-                  <div className="flex items-center mb-3">
-                    <div className="bg-yellow-100 p-2 rounded-lg mr-3">
-                      <span className="text-lg">⚠️</span>
-                    </div>
-                    <h4 className="font-bold text-yellow-900">Información Importante</h4>
-                  </div>
-                  <div className="space-y-2 text-yellow-800 ml-11">
-                    <p className="font-semibold">
-                      📺 Esta serie tiene temporadas con más de 50 capítulos
-                    </p>
-                    <p className="text-sm">
-                      💰 Hasta 50 capítulos se contempla como una temporada (${seriesPrice} CUP)
-                    </p>
-                    <p className="text-sm">
-                      📞 Para temporadas con más capítulos, contacta con TV a la Carta para más información
-                    </p>
-                    <div className="mt-3 bg-white rounded-lg p-3 border border-yellow-300">
-                      <p className="text-sm font-medium text-gray-900">
-                        📱 Contacto: +5354690878
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
-
               {/* Season Selection */}
               {hasMultipleSeasons && (
                 <div className="mb-8">
@@ -447,20 +421,10 @@ export function TVDetail() {
                             <div className="flex-1">
                               <p className="font-semibold text-gray-900">
                                 {season.name}
-                                {season.episode_count > 50 && (
-                                  <span className="ml-2 bg-yellow-100 text-yellow-700 px-2 py-1 rounded-full text-xs font-medium">
-                                    +50 episodios
-                                  </span>
-                                )}
                               </p>
                               <p className="text-sm text-gray-600 mt-1">
                                 {season.episode_count} episodios
                                 {season.air_date && ` • ${new Date(season.air_date).getFullYear()}`}
-                                {season.episode_count > 50 && (
-                                  <span className="block text-yellow-600 font-medium mt-1">
-                                    ⚠️ Consultar precio especial
-                                  </span>
-                                )}
                               </p>
                             </div>
                           </label>
@@ -538,8 +502,8 @@ export function TVDetail() {
               <div className="space-y-6">
                 <div className="bg-gray-50 rounded-xl p-4 border border-gray-100 hover:border-purple-200 transition-colors">
                   <div className="flex items-center mb-2">
-                    <div className="bg-purple-100 p-2 rounded-lg mr-3 shadow-sm animate-pulse">
-                      <span className="text-sm">📺</span>
+                    <div className="bg-purple-100 p-2 rounded-lg mr-3 shadow-sm">
+                      <Monitor className="h-4 w-4 text-purple-600" />
                     </div>
                     <h3 className="font-semibold text-gray-900">Estado</h3>
                   </div>
@@ -548,8 +512,8 @@ export function TVDetail() {
                 
                 <div className="bg-gray-50 rounded-xl p-4 border border-gray-100 hover:border-blue-200 transition-colors">
                   <div className="flex items-center mb-2">
-                    <div className="bg-blue-100 p-2 rounded-lg mr-3 shadow-sm animate-bounce">
-                      <span className="text-sm">🚀</span>
+                    <div className="bg-blue-100 p-2 rounded-lg mr-3 shadow-sm">
+                      <Rocket className="h-4 w-4 text-blue-600" />
                     </div>
                     <h3 className="font-semibold text-gray-900">Primera Emisión</h3>
                   </div>
@@ -560,8 +524,8 @@ export function TVDetail() {
                 
                 <div className="bg-gray-50 rounded-xl p-4 border border-gray-100 hover:border-green-200 transition-colors">
                   <div className="flex items-center mb-2">
-                    <div className="bg-green-100 p-2 rounded-lg mr-3 shadow-sm animate-pulse">
-                      <span className="text-sm">🎬</span>
+                    <div className="bg-green-100 p-2 rounded-lg mr-3 shadow-sm">
+                      <Film className="h-4 w-4 text-green-600" />
                     </div>
                     <h3 className="font-semibold text-gray-900">Temporadas</h3>
                   </div>
@@ -570,18 +534,27 @@ export function TVDetail() {
                 
                 <div className="bg-gray-50 rounded-xl p-4 border border-gray-100 hover:border-yellow-200 transition-colors">
                   <div className="flex items-center mb-2">
-                    <div className="bg-yellow-100 p-2 rounded-lg mr-3 shadow-sm animate-bounce">
-                      <span className="text-sm">🎞️</span>
+                    <div className="bg-yellow-100 p-2 rounded-lg mr-3 shadow-sm">
+                      <Tv className="h-4 w-4 text-yellow-600" />
                     </div>
                     <h3 className="font-semibold text-gray-900">Episodios</h3>
                   </div>
-                  <p className="text-gray-700 font-medium ml-11">{tvShow.number_of_episodes}</p>
+                  <div className="ml-11">
+                    <p className="text-gray-700 font-medium">{tvShow.number_of_episodes}</p>
+                    {tvShow.number_of_episodes > 50 && (
+                      <div className="mt-2 p-2 bg-yellow-50 rounded-lg border border-yellow-200">
+                        <p className="text-xs text-yellow-700 font-medium">
+                          ⚠️ Más de 50 episodios: Consultar condiciones especiales
+                        </p>
+                      </div>
+                    )}
+                  </div>
                 </div>
                 
                 <div className="bg-gray-50 rounded-xl p-4 border border-gray-100 hover:border-indigo-200 transition-colors">
                   <div className="flex items-center mb-2">
-                    <div className="bg-indigo-100 p-2 rounded-lg mr-3 shadow-sm animate-pulse">
-                      <span className="text-sm">⏰</span>
+                    <div className="bg-indigo-100 p-2 rounded-lg mr-3 shadow-sm">
+                      <Clock2 className="h-4 w-4 text-indigo-600" />
                     </div>
                     <h3 className="font-semibold text-gray-900">Duración</h3>
                   </div>
@@ -595,8 +568,8 @@ export function TVDetail() {
 
                 <div className="bg-gray-50 rounded-xl p-4 border border-gray-100 hover:border-pink-200 transition-colors">
                   <div className="flex items-center mb-2">
-                    <div className="bg-pink-100 p-2 rounded-lg mr-3 shadow-sm animate-bounce">
-                      <span className="text-sm">🌐</span>
+                    <div className="bg-pink-100 p-2 rounded-lg mr-3 shadow-sm">
+                      <Globe className="h-4 w-4 text-pink-600" />
                     </div>
                     <h3 className="font-semibold text-gray-900">Idioma Original</h3>
                   </div>
@@ -605,8 +578,8 @@ export function TVDetail() {
 
                 <div className="bg-gray-50 rounded-xl p-4 border border-gray-100 hover:border-red-200 transition-colors">
                   <div className="flex items-center mb-2">
-                    <div className="bg-red-100 p-2 rounded-lg mr-3 shadow-sm animate-pulse">
-                      <span className="text-sm">🗳️</span>
+                    <div className="bg-red-100 p-2 rounded-lg mr-3 shadow-sm">
+                      <Users className="h-4 w-4 text-red-600" />
                     </div>
                     <h3 className="font-semibold text-gray-900">Votos</h3>
                   </div>
@@ -618,8 +591,8 @@ export function TVDetail() {
                 {tvShow.production_companies.length > 0 && (
                   <div className="bg-gray-50 rounded-xl p-4 border border-gray-100 hover:border-orange-200 transition-colors">
                     <div className="flex items-center mb-3">
-                      <div className="bg-orange-100 p-2 rounded-lg mr-3 shadow-sm animate-pulse">
-                        <span className="text-sm">🏭</span>
+                      <div className="bg-orange-100 p-2 rounded-lg mr-3 shadow-sm">
+                        <Building className="h-4 w-4 text-orange-600" />
                       </div>
                       <h3 className="font-semibold text-gray-900">Productoras</h3>
                     </div>
@@ -638,8 +611,8 @@ export function TVDetail() {
                 {tvShow.production_countries.length > 0 && (
                   <div className="bg-gray-50 rounded-xl p-4 border border-gray-100 hover:border-teal-200 transition-colors">
                     <div className="flex items-center mb-3">
-                      <div className="bg-teal-100 p-2 rounded-lg mr-3 shadow-sm animate-bounce">
-                        <span className="text-sm">🌍</span>
+                      <div className="bg-teal-100 p-2 rounded-lg mr-3 shadow-sm">
+                        <MapPin className="h-4 w-4 text-teal-600" />
                       </div>
                       <h3 className="font-semibold text-gray-900">Países</h3>
                     </div>

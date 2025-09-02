@@ -446,7 +446,7 @@ export function CheckoutModal({ isOpen, onClose, onCheckout, items, total }: Che
                           </div>
                         </div>
                         <div className="text-xs text-green-600 ml-11">
-                          ✅ Zona: ${deliveryZone.split(' > ')[2] || deliveryZone}
+                          ✅ Zona: {deliveryZone.split(' > ')[2] || deliveryZone}
                         </div>
                       </div>
                     )}
