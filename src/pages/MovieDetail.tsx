@@ -328,6 +328,10 @@ export function MovieDetail() {
                 )}
               </div>
 
+
+
+              </div>
+
               {/* Price Card */}
               <div className="mb-6">
                 <PriceCard 
@@ -335,6 +339,7 @@ export function MovieDetail() {
                   isAnime={isAnime}
                 />
               </div>
+
               <div className="space-y-6">
                 <div className="bg-gray-50 rounded-xl p-4 border border-gray-100 hover:border-blue-200 transition-colors">
                   <div className="flex items-center mb-2">
@@ -383,9 +388,6 @@ export function MovieDetail() {
                       ? `$${movie.revenue.toLocaleString()}`
                       : 'No disponible'
                     }
-                  </p>
-                </div>
-
                 <div className="bg-gray-50 rounded-xl p-4 border border-gray-100 hover:border-pink-200 transition-colors">
                   <div className="flex items-center mb-2">
                     <div className="bg-pink-100 p-2 rounded-lg mr-3 shadow-sm">
@@ -397,7 +399,7 @@ export function MovieDetail() {
                     {movie.vote_count.toLocaleString()} votos
                   </p>
                 </div>
-
+                  </p>
                 {movie.production_companies.length > 0 && (
                   <div className="bg-gray-50 rounded-xl p-4 border border-gray-100 hover:border-indigo-200 transition-colors">
                     <div className="flex items-center mb-3">
@@ -417,7 +419,7 @@ export function MovieDetail() {
                     </div>
                   </div>
                 )}
-
+                </div>
                 {movie.production_countries.length > 0 && (
                   <div className="bg-gray-50 rounded-xl p-4 border border-gray-100 hover:border-orange-200 transition-colors">
                     <div className="flex items-center mb-3">
@@ -438,11 +440,9 @@ export function MovieDetail() {
                   </div>
                 )}
               </div>
-              </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
   );
 }
