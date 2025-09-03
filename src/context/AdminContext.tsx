@@ -621,12 +621,6 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
       
       // Add component files
       const componentsFolder = srcFolder?.folder('components');
-      componentsFolder?.file('Header.tsx', getHeaderSource());
-      componentsFolder?.file('MovieCard.tsx', getMovieCardSource());
-      componentsFolder?.file('HeroCarousel.tsx', getHeroCarouselSource());
-      componentsFolder?.file('CastSection.tsx', getCastSectionSource());
-      componentsFolder?.file('VideoPlayer.tsx', getVideoPlayerSource());
-      componentsFolder?.file('CartAnimation.tsx', getCartAnimationSource());
       componentsFolder?.file('CheckoutModal.tsx', getCheckoutModalSource(state));
       componentsFolder?.file('PriceCard.tsx', getPriceCardSource(state));
       componentsFolder?.file('NovelasModal.tsx', getNovelasModalSource(state));
