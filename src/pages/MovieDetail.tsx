@@ -278,9 +278,11 @@ export function MovieDetail() {
               </div>
               
               <div className="p-6">
-                onMouseEnter={() => setIsCartHovered(true)}
-                onMouseLeave={() => setIsCartHovered(false)}
-                className={`w-full mb-6 px-6 py-5 rounded-2xl font-bold transition-all duration-500 flex items-center justify-center transform relative overflow-hidden ${
+                <button
+                  onClick={handleCartAction}
+                  onMouseEnter={() => setIsCartHovered(true)}
+                  onMouseLeave={() => setIsCartHovered(false)}
+                  className={`w-full mb-6 px-6 py-5 rounded-2xl font-bold transition-all duration-500 flex items-center justify-center transform relative overflow-hidden ${
                   inCart
                     ? 'bg-gradient-to-r from-green-500 via-emerald-500 to-teal-500 hover:from-green-600 hover:via-emerald-600 hover:to-teal-600 text-white shadow-2xl scale-105'
                     : 'bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 hover:from-blue-600 hover:via-purple-600 hover:to-pink-600 text-white shadow-xl'
@@ -321,7 +323,7 @@ export function MovieDetail() {
                 {/* Success indicator */}
                 {inCart && (
                   <div className="absolute -top-2 -right-2 bg-gradient-to-r from-green-400 to-emerald-400 text-white p-2 rounded-full animate-bounce shadow-lg">
-                    <Check className="h-4 w-4" />
+                    <Star className="h-4 w-4" />
                   </div>
                 )}
               </div>
