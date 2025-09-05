@@ -1,35 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { 
-  Shield, 
-  Eye, 
-  EyeOff, 
-  Settings, 
-  DollarSign, 
-  MapPin, 
-  BookOpen, 
-  Bell, 
-  Download, 
-  Upload, 
-  Sync, 
-  BarChart3, 
-  Users, 
-  Package, 
-  TrendingUp, 
-  AlertCircle, 
-  CheckCircle, 
-  Clock, 
-  Trash2, 
-  Plus, 
-  Edit, 
-  Save, 
-  X, 
-  Home,
-  ArrowLeft,
-  LogOut,
-  Lock,
-  User
-} from 'lucide-react';
+import { Shield, Eye, EyeOff, Settings, DollarSign, MapPin, BookOpen, Bell, Download, Upload, FolderSync as Sync, BarChart3, Users, Package, TrendingUp, AlertCircle, CheckCircle, Clock, Trash2, Plus, Edit, Save, X, Home, ArrowLeft, LogOut, Lock, User } from 'lucide-react';
 import { useAdmin } from '../context/AdminContext';
 import type { PriceConfig, DeliveryZone, Novel } from '../context/AdminContext';
 
