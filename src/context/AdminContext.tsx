@@ -515,16 +515,11 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
     addNotification({
       type: 'success',
       title: 'Precios actualizados',
-      message: 'Los precios se han actualizado y sincronizado automáticamente en toda la aplicación',
+      message: 'Los precios se han actualizado y sincronizado automáticamente',
       section: 'Precios',
       action: 'update'
     });
     broadcastChange({ type: 'prices', data: prices });
-    
-    // Force update of all components that use prices
-    window.dispatchEvent(new CustomEvent('admin_prices_updated', { 
-      detail: { prices, timestamp: new Date().toISOString() } 
-    }));
   };
 
   const addDeliveryZone = (zone: Omit<DeliveryZone, 'id' | 'createdAt' | 'updatedAt'>) => {
@@ -532,16 +527,11 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
     addNotification({
       type: 'success',
       title: 'Zona de entrega agregada',
-      message: `Se agregó la zona "${zone.name}" y se sincronizó automáticamente en toda la aplicación`,
+      message: `Se agregó la zona "${zone.name}" y se sincronizó automáticamente`,
       section: 'Zonas de Entrega',
       action: 'create'
     });
     broadcastChange({ type: 'delivery_zone_add', data: zone });
-    
-    // Force update of checkout modal
-    window.dispatchEvent(new CustomEvent('admin_delivery_zones_updated', { 
-      detail: { zones: [...state.deliveryZones, zone], timestamp: new Date().toISOString() } 
-    }));
   };
 
   const updateDeliveryZone = (zone: DeliveryZone) => {
@@ -549,16 +539,11 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
     addNotification({
       type: 'success',
       title: 'Zona de entrega actualizada',
-      message: `Se actualizó la zona "${zone.name}" y se sincronizó automáticamente en toda la aplicación`,
+      message: `Se actualizó la zona "${zone.name}" y se sincronizó automáticamente`,
       section: 'Zonas de Entrega',
       action: 'update'
     });
     broadcastChange({ type: 'delivery_zone_update', data: zone });
-    
-    // Force update of checkout modal
-    window.dispatchEvent(new CustomEvent('admin_delivery_zones_updated', { 
-      detail: { zones: state.deliveryZones.map(z => z.id === zone.id ? zone : z), timestamp: new Date().toISOString() } 
-    }));
   };
 
   const deleteDeliveryZone = (id: number) => {
@@ -567,16 +552,11 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
     addNotification({
       type: 'warning',
       title: 'Zona de entrega eliminada',
-      message: `Se eliminó la zona "${zone?.name || 'Desconocida'}" y se sincronizó automáticamente en toda la aplicación`,
+      message: `Se eliminó la zona "${zone?.name || 'Desconocida'}" y se sincronizó automáticamente`,
       section: 'Zonas de Entrega',
       action: 'delete'
     });
     broadcastChange({ type: 'delivery_zone_delete', data: { id } });
-    
-    // Force update of checkout modal
-    window.dispatchEvent(new CustomEvent('admin_delivery_zones_updated', { 
-      detail: { zones: state.deliveryZones.filter(z => z.id !== id), timestamp: new Date().toISOString() } 
-    }));
   };
 
   const addNovel = (novel: Omit<Novel, 'id' | 'createdAt' | 'updatedAt'>) => {
@@ -584,16 +564,11 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
     addNotification({
       type: 'success',
       title: 'Novela agregada',
-      message: `Se agregó la novela "${novel.titulo}" y se sincronizó automáticamente en toda la aplicación`,
+      message: `Se agregó la novela "${novel.titulo}" y se sincronizó automáticamente`,
       section: 'Gestión de Novelas',
       action: 'create'
     });
     broadcastChange({ type: 'novel_add', data: novel });
-    
-    // Force update of novels modal
-    window.dispatchEvent(new CustomEvent('admin_novels_updated', { 
-      detail: { novels: [...state.novels, novel], timestamp: new Date().toISOString() } 
-    }));
   };
 
   const updateNovel = (novel: Novel) => {
@@ -601,16 +576,11 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
     addNotification({
       type: 'success',
       title: 'Novela actualizada',
-      message: `Se actualizó la novela "${novel.titulo}" y se sincronizó automáticamente en toda la aplicación`,
+      message: `Se actualizó la novela "${novel.titulo}" y se sincronizó automáticamente`,
       section: 'Gestión de Novelas',
       action: 'update'
     });
     broadcastChange({ type: 'novel_update', data: novel });
-    
-    // Force update of novels modal
-    window.dispatchEvent(new CustomEvent('admin_novels_updated', { 
-      detail: { novels: state.novels.map(n => n.id === novel.id ? novel : n), timestamp: new Date().toISOString() } 
-    }));
   };
 
   const deleteNovel = (id: number) => {
@@ -619,16 +589,11 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
     addNotification({
       type: 'warning',
       title: 'Novela eliminada',
-      message: `Se eliminó la novela "${novel?.titulo || 'Desconocida'}" y se sincronizó automáticamente en toda la aplicación`,
+      message: `Se eliminó la novela "${novel?.titulo || 'Desconocida'}" y se sincronizó automáticamente`,
       section: 'Gestión de Novelas',
       action: 'delete'
     });
     broadcastChange({ type: 'novel_delete', data: { id } });
-    
-    // Force update of novels modal
-    window.dispatchEvent(new CustomEvent('admin_novels_updated', { 
-      detail: { novels: state.novels.filter(n => n.id !== id), timestamp: new Date().toISOString() } 
-    }));
   };
 
   const addNotification = (notification: Omit<Notification, 'id' | 'timestamp'>) => {
@@ -715,7 +680,7 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
       addNotification({
         type: 'info',
         title: 'Exportación de código fuente iniciada',
-        message: 'Generando sistema completo con código fuente y configuración embebida...',
+        message: 'Generando sistema completo con código fuente...',
         section: 'Sistema',
         action: 'export_source_start'
       });
@@ -732,7 +697,7 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
       addNotification({
         type: 'success',
         title: 'Código fuente exportado',
-        message: 'El sistema completo se ha exportado como código fuente con configuración embebida',
+        message: 'El sistema completo se ha exportado como código fuente',
         section: 'Sistema',
         action: 'export_source'
       });
@@ -776,7 +741,7 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
       addNotification({
         type: 'info',
         title: 'Sincronización completa iniciada',
-        message: 'Sincronizando todas las secciones del sistema en tiempo real...',
+        message: 'Sincronizando todas las secciones del sistema...',
         section: 'Sistema',
         action: 'sync_all_start'
       });
@@ -806,7 +771,7 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
       addNotification({
         type: 'success',
         title: 'Sincronización completa exitosa',
-        message: 'Todas las secciones se han sincronizado correctamente en tiempo real',
+        message: 'Todas las secciones se han sincronizado correctamente',
         section: 'Sistema',
         action: 'sync_all'
       });

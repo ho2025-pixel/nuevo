@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { X, User, MapPin, Phone, Copy, Check, MessageCircle, Calculator, DollarSign, CreditCard, Navigation, Clock, Car, Bike, MapPin as LocationIcon } from 'lucide-react';
-import { useAdmin } from '../context/AdminContext';
 
 // ZONAS DE ENTREGA EMBEBIDAS - Generadas automáticamente
 const EMBEDDED_DELIVERY_ZONES = [];
@@ -65,19 +64,58 @@ interface CheckoutModalProps {
 // Base delivery zones - these will be combined with embedded zones
 const BASE_DELIVERY_ZONES = {
   'Por favor seleccionar su Barrio/Zona': 0,
+  'Entrega a Domicilio': 0,
+};
+
+// Zonas específicas de Santiago de Cuba con costos
+const SANTIAGO_DELIVERY_ZONES = {
+  // Centro de Santiago
+  'Santiago de Cuba > Centro > Parque Céspedes': 50,
+  'Santiago de Cuba > Centro > Plaza de Marte': 50,
+  'Santiago de Cuba > Centro > Calle Enramadas': 50,
+  'Santiago de Cuba > Centro > Plaza de Dolores': 50,
   
+  // Zona Norte
+  'Santiago de Cuba > Norte > Vista Alegre': 60,
+  'Santiago de Cuba > Norte > Sueño': 70,
+  'Santiago de Cuba > Norte > Los Olmos': 80,
+  'Santiago de Cuba > Norte > Altamira': 90,
+  
+  // Zona Este
+  'Santiago de Cuba > Este > Reparto Flores': 65,
+  'Santiago de Cuba > Este > Micro 9': 75,
+  'Santiago de Cuba > Este > Micro 10': 75,
+  'Santiago de Cuba > Este > Reparto Terrazas': 85,
+  
+  // Zona Oeste
+  'Santiago de Cuba > Oeste > Abel Santamaría': 70,
+  'Santiago de Cuba > Oeste > 30 de Noviembre': 80,
+  'Santiago de Cuba > Oeste > Reparto Versalles': 90,
+  'Santiago de Cuba > Oeste > Micro 4': 85,
+  
+  // Zona Sur
+  'Santiago de Cuba > Sur > Santa Bárbara': 75,
+  'Santiago de Cuba > Sur > Reparto Sánchez Hechavarría': 85,
+  'Santiago de Cuba > Sur > Micro 1': 70,
+  'Santiago de Cuba > Sur > Reparto Portuondo': 80,
+  
+  // Zonas Periféricas (más alejadas)
+  'Santiago de Cuba > Periferia > El Caney': 100,
+  'Santiago de Cuba > Periferia > San Juan': 120,
+  'Santiago de Cuba > Periferia > Siboney': 150,
+  'Santiago de Cuba > Periferia > La Maya': 200,
+  'Santiago de Cuba > Periferia > El Cobre': 180,
+  'Santiago de Cuba > Periferia > Palma Soriano': 250,
 };
 
 export function CheckoutModal({ isOpen, onClose, onCheckout, items, total }: CheckoutModalProps) {
-  const { state: adminState } = useAdmin();
   const [customerInfo, setCustomerInfo] = useState<CustomerInfo>({
     fullName: '',
     phone: '',
     address: '',
   });
   
-  const [deliveryOption, setDeliveryOption] = useState('');
-  const [deliveryZone, setDeliveryZone] = useState('');
+  const [deliveryZone, setDeliveryZone] = useState('Por favor seleccionar su Barrio/Zona');
   const [isProcessing, setIsProcessing] = useState(false);
   const [orderGenerated, setOrderGenerated] = useState(false);
   const [generatedOrder, setGeneratedOrder] = useState('');
@@ -89,30 +127,55 @@ export function CheckoutModal({ isOpen, onClose, onCheckout, items, total }: Che
   }>({});
   const [isCalculatingDistance, setIsCalculatingDistance] = useState(false);
   const [userCoordinates, setUserCoordinates] = useState<{ lat: number; lng: number } | null>(null);
+  const [showSantiagoZones, setShowSantiagoZones] = useState(false);
 
-  // Get delivery zones from admin state (real-time sync)
-  const adminZonesMap = adminState.deliveryZones.reduce((acc, zone) => {
+  // Get delivery zones from embedded configuration
+  const embeddedZonesMap = EMBEDDED_DELIVERY_ZONES.reduce((acc, zone) => {
     acc[zone.name] = zone.cost;
     return acc;
   }, {} as { [key: string]: number });
   
-  // Use admin zones for delivery options
-  const deliveryZones = {
-    ...adminZonesMap,
-    'Local TV a la Carta': 0
+  // Combine embedded zones with base zones
+  let allZones = { 
+    ...BASE_DELIVERY_ZONES, 
+    ...embeddedZonesMap,
+    'Entrega en Local > TV a la Carta > Local TV a la Carta': 0
   };
   
-  const deliveryCost = deliveryZones[deliveryZone as keyof typeof deliveryZones] || 0;
+  // Si se selecciona "Entrega a Domicilio", mostrar las zonas de Santiago
+  if (showSantiagoZones) {
+    allZones = {
+      'Por favor seleccionar su Barrio/Zona': 0,
+      'Volver a opciones principales': 0,
+      ...SANTIAGO_DELIVERY_ZONES,
+      'Entrega en Local > TV a la Carta > Local TV a la Carta': 0
+    };
+  }
+  
+  const deliveryCost = allZones[deliveryZone as keyof typeof allZones] || 0;
   const finalTotal = total + deliveryCost;
-  const isLocalPickup = deliveryZone === 'Local TV a la Carta';
+  const isLocalPickup = deliveryZone === 'Entrega en Local > TV a la Carta > Local TV a la Carta';
 
-  // Get current transfer fee percentage from admin state (real-time sync)
-  const transferFeePercentage = adminState.prices.transferFeePercentage;
+  // Get current transfer fee percentage from embedded prices
+  const transferFeePercentage = EMBEDDED_PRICES.transferFeePercentage;
 
   const isFormValid = customerInfo.fullName.trim() !== '' && 
                      customerInfo.phone.trim() !== '' && 
                      customerInfo.address.trim() !== '' &&
-                     deliveryOption !== '' && deliveryZone !== '';
+                     deliveryZone !== 'Por favor seleccionar su Barrio/Zona';
+
+  // Manejar cambio de zona de entrega
+  const handleDeliveryZoneChange = (value: string) => {
+    if (value === 'Entrega a Domicilio') {
+      setShowSantiagoZones(true);
+      setDeliveryZone('Por favor seleccionar su Barrio/Zona');
+    } else if (value === 'Volver a opciones principales') {
+      setShowSantiagoZones(false);
+      setDeliveryZone('Por favor seleccionar su Barrio/Zona');
+    } else {
+      setDeliveryZone(value);
+    }
+  };
 
   // Función para obtener coordenadas de una dirección
   const getCoordinatesFromAddress = async (address: string): Promise<{ lat: number; lng: number } | null> => {
@@ -198,9 +261,9 @@ export function CheckoutModal({ isOpen, onClose, onCheckout, items, total }: Che
     const cashItems = items.filter(item => item.paymentType === 'cash');
     const transferItems = items.filter(item => item.paymentType === 'transfer');
     
-    // Get current prices from admin state (real-time sync)
-    const moviePrice = adminState.prices.moviePrice;
-    const seriesPrice = adminState.prices.seriesPrice;
+    // Get current prices from embedded configuration
+    const moviePrice = EMBEDDED_PRICES.moviePrice;
+    const seriesPrice = EMBEDDED_PRICES.seriesPrice;
     
     const cashTotal = cashItems.reduce((sum, item) => {
       const basePrice = item.type === 'movie' ? moviePrice : (item.selectedSeasons?.length || 1) * seriesPrice;
@@ -219,8 +282,8 @@ export function CheckoutModal({ isOpen, onClose, onCheckout, items, total }: Che
     const orderId = generateOrderId();
     const { cashTotal, transferTotal } = calculateTotals();
     const transferFee = transferTotal - items.filter(item => item.paymentType === 'transfer').reduce((sum, item) => {
-      const moviePrice = adminState.prices.moviePrice;
-      const seriesPrice = adminState.prices.seriesPrice;
+      const moviePrice = EMBEDDED_PRICES.moviePrice;
+      const seriesPrice = EMBEDDED_PRICES.seriesPrice;
       const basePrice = item.type === 'movie' ? moviePrice : (item.selectedSeasons?.length || 1) * seriesPrice;
       return sum + basePrice;
     }, 0);
@@ -232,8 +295,8 @@ export function CheckoutModal({ isOpen, onClose, onCheckout, items, total }: Che
           ? `\n  📺 Temporadas: ${item.selectedSeasons.sort((a, b) => a - b).join(', ')}` 
           : '';
         const itemType = item.type === 'movie' ? 'Película' : 'Serie';
-        const moviePrice = adminState.prices.moviePrice;
-        const seriesPrice = adminState.prices.seriesPrice;
+        const moviePrice = EMBEDDED_PRICES.moviePrice;
+        const seriesPrice = EMBEDDED_PRICES.seriesPrice;
         const basePrice = item.type === 'movie' ? moviePrice : (item.selectedSeasons?.length || 1) * seriesPrice;
         const finalPrice = item.paymentType === 'transfer' ? Math.round(basePrice * (1 + transferFeePercentage / 100)) : basePrice;
         const paymentTypeText = item.paymentType === 'transfer' ? `Transferencia (+${transferFeePercentage}%)` : 'Efectivo';
@@ -269,7 +332,7 @@ export function CheckoutModal({ isOpen, onClose, onCheckout, items, total }: Che
     if (isLocalPickup) {
       orderText += `🏪 Entrega en Local: GRATIS\n`;
     } else {
-      orderText += `🚚 Entrega (${deliveryZone}): +$${deliveryCost.toLocaleString()} CUP\n`;
+      orderText += `🚚 Entrega (${deliveryZone.split(' > ')[2]}): +$${deliveryCost.toLocaleString()} CUP\n`;
     }
     orderText += `\n🎯 *TOTAL FINAL: $${finalTotal.toLocaleString()} CUP*\n\n`;
     
@@ -305,7 +368,7 @@ export function CheckoutModal({ isOpen, onClose, onCheckout, items, total }: Che
       }
     } else {
       orderText += `📍 *ZONA DE ENTREGA:*\n`;
-      orderText += `${deliveryZone}\n`;
+      orderText += `${deliveryZone.replace(' > ', ' → ')}\n`;
       orderText += `💰 Costo de entrega: $${deliveryCost.toLocaleString()} CUP\n\n`;
     }
     
@@ -339,8 +402,8 @@ export function CheckoutModal({ isOpen, onClose, onCheckout, items, total }: Che
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (deliveryOption === '' || deliveryZone === '') {
-      alert('Por favor selecciona una opción de entrega.');
+    if (deliveryZone === 'Por favor seleccionar su Barrio/Zona') {
+      alert('Por favor selecciona un barrio específico para la entrega.');
       return;
     }
 
@@ -350,8 +413,8 @@ export function CheckoutModal({ isOpen, onClose, onCheckout, items, total }: Che
       const { orderId } = generateOrderText();
       const { cashTotal, transferTotal } = calculateTotals();
       const transferFee = transferTotal - items.filter(item => item.paymentType === 'transfer').reduce((sum, item) => {
-        const moviePrice = adminState.prices.moviePrice;
-        const seriesPrice = adminState.prices.seriesPrice;
+        const moviePrice = EMBEDDED_PRICES.moviePrice;
+        const seriesPrice = EMBEDDED_PRICES.seriesPrice;
         const basePrice = item.type === 'movie' ? moviePrice : (item.selectedSeasons?.length || 1) * seriesPrice;
         return sum + basePrice;
       }, 0);
@@ -432,7 +495,7 @@ export function CheckoutModal({ isOpen, onClose, onCheckout, items, total }: Che
                     </div>
                     <div className="text-sm text-gray-600">Costo de Entrega</div>
                     <div className="text-xs text-gray-500 mt-1">
-                      {deliveryZone || 'Seleccionar zona'}
+                      {deliveryZone.split(' > ')[2] || 'Seleccionar zona'}
                     </div>
                   </div>
                 </div>
@@ -506,7 +569,7 @@ export function CheckoutModal({ isOpen, onClose, onCheckout, items, total }: Che
                 <div className="bg-white rounded-2xl p-4 sm:p-6 border border-gray-200 shadow-sm">
                   <h3 className="text-lg sm:text-xl font-bold mb-4 flex items-center text-gray-900">
                     <MapPin className="h-5 w-5 mr-3 text-green-600" />
-                    Opciones de Entrega
+                    Zona de Entrega
                   </h3>
                   
                   <div className="bg-gradient-to-r from-green-50 to-blue-50 rounded-xl p-4 mb-4 border border-green-200">
@@ -514,93 +577,70 @@ export function CheckoutModal({ isOpen, onClose, onCheckout, items, total }: Che
                       <div className="bg-green-100 p-2 rounded-lg mr-3">
                         <span className="text-sm">📍</span>
                       </div>
-                      <h4 className="font-semibold text-green-900">¿Cómo desea recibir su pedido?</h4>
+                      <h4 className="font-semibold text-green-900">Información de Entrega</h4>
                     </div>
                     <p className="text-sm text-green-700 ml-11">
-                      Elija si quiere entrega a domicilio o recogida en el local.
+                      Seleccione su zona para calcular el costo de entrega. Los precios pueden variar según la distancia.
                     </p>
                   </div>
                   
-                  {/* Delivery Option Selection */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Tipo de Entrega *
+                      Seleccionar Barrio/Zona *
                     </label>
                     <select
-                      value={deliveryOption}
-                      onChange={(e) => {
-                        setDeliveryOption(e.target.value);
-                        setDeliveryZone('');
-                      }}
+                      value={deliveryZone}
+                      onChange={(e) => handleDeliveryZoneChange(e.target.value)}
                       required
                       className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:border-transparent transition-all bg-white ${
-                        deliveryOption === ''
+                        deliveryZone === 'Por favor seleccionar su Barrio/Zona'
                           ? 'border-orange-300 focus:ring-orange-500 bg-orange-50'
                           : 'border-gray-300 focus:ring-green-500'
                       }`}
                     >
-                      <option value="">Seleccione una opción</option>
-                      <option value="delivery">Entrega a domicilio</option>
-                      <option value="pickup">Recogida en el local</option>
+                      {Object.entries(allZones).map(([zone, cost]) => (
+                        <option key={zone} value={zone}>
+                          {zone === 'Por favor seleccionar su Barrio/Zona' 
+                            ? zone 
+                            : zone === 'Entrega a Domicilio'
+                              ? '🚚 Entrega a Domicilio (Ver zonas disponibles)'
+                              : zone === 'Volver a opciones principales'
+                                ? '← Volver a opciones principales'
+                                : zone.includes('Local TV a la Carta')
+                                  ? '🏪 Entrega en Local - GRATIS'
+                                  : zone.includes('Santiago de Cuba')
+                                    ? `${zone.split(' > ')[2]} (${zone.split(' > ')[1]}) - $${cost.toLocaleString()} CUP`
+                                    : `${zone.split(' > ')[2] || zone} ${cost > 0 ? `- $${cost.toLocaleString()} CUP` : ''}`
+                          }
+                        </option>
+                      ))}
                     </select>
                     
-                    {deliveryOption === '' && (
+                    {deliveryZone === 'Por favor seleccionar su Barrio/Zona' && (
                       <div className="mt-3 p-3 bg-orange-50 rounded-lg border border-orange-200">
                         <div className="flex items-center">
                           <span className="text-orange-600 mr-2">⚠️</span>
                           <span className="text-sm font-medium text-orange-700">
-                            Por favor seleccione el tipo de entrega para continuar
+                            Por favor seleccione su zona de entrega para continuar
                           </span>
                         </div>
                       </div>
                     )}
-                  </div>
-                  
-                  {/* Zone Selection based on delivery option */}
-                  {deliveryOption === 'delivery' && (
-                    <div className="mt-4">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Seleccionar Barrio/Zona *
-                      </label>
-                      <select
-                        value={deliveryZone}
-                        onChange={(e) => setDeliveryZone(e.target.value)}
-                        required
-                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all bg-white"
-                      >
-                        <option value="">Por favor seleccionar su Barrio/Zona</option>
-                        {adminState.deliveryZones.map((zone) => (
-                          <option key={zone.id} value={zone.name}>
-                            {zone.name} - ${zone.cost.toLocaleString()} CUP
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  )}
-                  
-                  {deliveryOption === 'pickup' && (
-                    <div className="mt-4">
-                      <div className="bg-blue-50 rounded-xl p-4 border border-blue-200">
+                    
+                    {showSantiagoZones && deliveryZone === 'Por favor seleccionar su Barrio/Zona' && (
+                      <div className="mt-3 p-4 bg-blue-50 rounded-lg border border-blue-200">
                         <div className="flex items-center mb-2">
-                          <div className="bg-blue-100 p-2 rounded-lg mr-3">
-                            <span className="text-sm">🏪</span>
-                          </div>
-                          <span className="text-sm font-semibold text-blue-800">Recogida en Local - GRATIS</span>
+                          <span className="text-blue-600 mr-2">🚚</span>
+                          <span className="text-sm font-medium text-blue-700">
+                            Zonas de Entrega a Domicilio en Santiago de Cuba
+                          </span>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => setDeliveryZone('Local TV a la Carta')}
-                          className={`w-full mt-2 px-4 py-3 rounded-xl font-medium transition-all ${
-                            deliveryZone === 'Local TV a la Carta'
-                              ? 'bg-green-500 text-white'
-                              : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
-                          }`}
-                        >
-                          {deliveryZone === 'Local TV a la Carta' ? '✓ Seleccionado' : 'Seleccionar Local TV a la Carta'}
-                        </button>
+                        <p className="text-xs text-blue-600 ml-6">
+                          Seleccione su zona específica para ver el costo de entrega. 
+                          Los precios varían según la distancia desde nuestro local.
+                        </p>
                       </div>
-                    </div>
-                  )}
+                    )}
                     
                     {deliveryCost > 0 && (
                       <div className="mt-3 p-4 bg-gradient-to-r from-green-50 to-blue-50 rounded-xl border border-green-200">
@@ -620,7 +660,10 @@ export function CheckoutModal({ isOpen, onClose, onCheckout, items, total }: Che
                           </div>
                         </div>
                         <div className="text-xs text-green-600 ml-11">
-                          ✅ Zona: {deliveryZone}
+                          ✅ Zona: {deliveryZone.includes('Santiago de Cuba') 
+                            ? `${deliveryZone.split(' > ')[2]} (${deliveryZone.split(' > ')[1]})` 
+                            : deliveryZone.split(' > ')[2] || deliveryZone
+                          }
                         </div>
                       </div>
                     )}
@@ -721,6 +764,7 @@ export function CheckoutModal({ isOpen, onClose, onCheckout, items, total }: Che
                         )}
                       </div>
                     )}
+                  </div>
                 </div>
 
                 {/* Action Buttons */}
@@ -735,9 +779,9 @@ export function CheckoutModal({ isOpen, onClose, onCheckout, items, total }: Che
                   <button
                     type="button"
                     onClick={handleGenerateOrder}
-                    disabled={!isFormValid || deliveryOption === '' || deliveryZone === ''}
+                    disabled={!isFormValid || deliveryZone === 'Por favor seleccionar su Barrio/Zona'}
                     className={`flex-1 px-6 py-4 rounded-xl transition-all font-medium ${
-                      isFormValid && deliveryOption !== '' && deliveryZone !== ''
+                      isFormValid && deliveryZone !== 'Por favor seleccionar su Barrio/Zona'
                         ? 'bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white'
                         : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                     }`}
@@ -746,7 +790,7 @@ export function CheckoutModal({ isOpen, onClose, onCheckout, items, total }: Che
                   </button>
                   <button
                     type="submit"
-                    disabled={isProcessing || !isFormValid || deliveryOption === '' || deliveryZone === ''}
+                    disabled={isProcessing || !isFormValid || deliveryZone === 'Por favor seleccionar su Barrio/Zona'}
                     className="flex-1 px-6 py-4 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl transition-all font-medium flex items-center justify-center"
                   >
                     {isProcessing ? (
