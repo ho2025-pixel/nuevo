@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { X, User, MapPin, Phone, Copy, Check, MessageCircle, Calculator, DollarSign, CreditCard, Navigation, Clock, Car, Bike, MapPin as LocationIcon } from 'lucide-react';
+import { useAdmin } from '../context/AdminContext';
 
 // ZONAS DE ENTREGA EMBEBIDAS - Generadas automáticamente
 const EMBEDDED_DELIVERY_ZONES = [];
@@ -68,13 +69,15 @@ const BASE_DELIVERY_ZONES = {
 };
 
 export function CheckoutModal({ isOpen, onClose, onCheckout, items, total }: CheckoutModalProps) {
+  const { state: adminState } = useAdmin();
   const [customerInfo, setCustomerInfo] = useState<CustomerInfo>({
     fullName: '',
     phone: '',
     address: '',
   });
   
-  const [deliveryZone, setDeliveryZone] = useState('Por favor seleccionar su Barrio/Zona');
+  const [deliveryOption, setDeliveryOption] = useState('');
+  const [deliveryZone, setDeliveryZone] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [orderGenerated, setOrderGenerated] = useState(false);
   const [generatedOrder, setGeneratedOrder] = useState('');
@@ -87,29 +90,29 @@ export function CheckoutModal({ isOpen, onClose, onCheckout, items, total }: Che
   const [isCalculatingDistance, setIsCalculatingDistance] = useState(false);
   const [userCoordinates, setUserCoordinates] = useState<{ lat: number; lng: number } | null>(null);
 
-  // Get delivery zones from embedded configuration
-  const embeddedZonesMap = EMBEDDED_DELIVERY_ZONES.reduce((acc, zone) => {
+  // Get delivery zones from admin state (real-time sync)
+  const adminZonesMap = adminState.deliveryZones.reduce((acc, zone) => {
     acc[zone.name] = zone.cost;
     return acc;
   }, {} as { [key: string]: number });
   
-  // Combine embedded zones with base zones
-  const allZones = { 
-    ...BASE_DELIVERY_ZONES, 
-    ...embeddedZonesMap,
-    'Entrega en Local > TV a la Carta > Reparto Nuevo Vista Alegre': 0
+  // Use admin zones for delivery options
+  const deliveryZones = {
+    ...adminZonesMap,
+    'Local TV a la Carta': 0
   };
-  const deliveryCost = allZones[deliveryZone as keyof typeof allZones] || 0;
+  
+  const deliveryCost = deliveryZones[deliveryZone as keyof typeof deliveryZones] || 0;
   const finalTotal = total + deliveryCost;
-  const isLocalPickup = deliveryZone === 'Entrega en Local > TV a la Carta > Reparto Nuevo Vista Alegre';
+  const isLocalPickup = deliveryZone === 'Local TV a la Carta';
 
-  // Get current transfer fee percentage from embedded prices
-  const transferFeePercentage = EMBEDDED_PRICES.transferFeePercentage;
+  // Get current transfer fee percentage from admin state (real-time sync)
+  const transferFeePercentage = adminState.prices.transferFeePercentage;
 
   const isFormValid = customerInfo.fullName.trim() !== '' && 
                      customerInfo.phone.trim() !== '' && 
                      customerInfo.address.trim() !== '' &&
-                     deliveryZone !== 'Por favor seleccionar su Barrio/Zona';
+                     deliveryOption !== '' && deliveryZone !== '';
 
   // Función para obtener coordenadas de una dirección
   const getCoordinatesFromAddress = async (address: string): Promise<{ lat: number; lng: number } | null> => {
@@ -195,9 +198,9 @@ export function CheckoutModal({ isOpen, onClose, onCheckout, items, total }: Che
     const cashItems = items.filter(item => item.paymentType === 'cash');
     const transferItems = items.filter(item => item.paymentType === 'transfer');
     
-    // Get current prices from embedded configuration
-    const moviePrice = EMBEDDED_PRICES.moviePrice;
-    const seriesPrice = EMBEDDED_PRICES.seriesPrice;
+    // Get current prices from admin state (real-time sync)
+    const moviePrice = adminState.prices.moviePrice;
+    const seriesPrice = adminState.prices.seriesPrice;
     
     const cashTotal = cashItems.reduce((sum, item) => {
       const basePrice = item.type === 'movie' ? moviePrice : (item.selectedSeasons?.length || 1) * seriesPrice;
@@ -216,8 +219,8 @@ export function CheckoutModal({ isOpen, onClose, onCheckout, items, total }: Che
     const orderId = generateOrderId();
     const { cashTotal, transferTotal } = calculateTotals();
     const transferFee = transferTotal - items.filter(item => item.paymentType === 'transfer').reduce((sum, item) => {
-      const moviePrice = EMBEDDED_PRICES.moviePrice;
-      const seriesPrice = EMBEDDED_PRICES.seriesPrice;
+      const moviePrice = adminState.prices.moviePrice;
+      const seriesPrice = adminState.prices.seriesPrice;
       const basePrice = item.type === 'movie' ? moviePrice : (item.selectedSeasons?.length || 1) * seriesPrice;
       return sum + basePrice;
     }, 0);
@@ -229,8 +232,8 @@ export function CheckoutModal({ isOpen, onClose, onCheckout, items, total }: Che
           ? `\n  📺 Temporadas: ${item.selectedSeasons.sort((a, b) => a - b).join(', ')}` 
           : '';
         const itemType = item.type === 'movie' ? 'Película' : 'Serie';
-        const moviePrice = EMBEDDED_PRICES.moviePrice;
-        const seriesPrice = EMBEDDED_PRICES.seriesPrice;
+        const moviePrice = adminState.prices.moviePrice;
+        const seriesPrice = adminState.prices.seriesPrice;
         const basePrice = item.type === 'movie' ? moviePrice : (item.selectedSeasons?.length || 1) * seriesPrice;
         const finalPrice = item.paymentType === 'transfer' ? Math.round(basePrice * (1 + transferFeePercentage / 100)) : basePrice;
         const paymentTypeText = item.paymentType === 'transfer' ? `Transferencia (+${transferFeePercentage}%)` : 'Efectivo';
@@ -266,7 +269,7 @@ export function CheckoutModal({ isOpen, onClose, onCheckout, items, total }: Che
     if (isLocalPickup) {
       orderText += `🏪 Entrega en Local: GRATIS\n`;
     } else {
-      orderText += `🚚 Entrega (${deliveryZone.split(' > ')[2]}): +$${deliveryCost.toLocaleString()} CUP\n`;
+      orderText += `🚚 Entrega (${deliveryZone}): +$${deliveryCost.toLocaleString()} CUP\n`;
     }
     orderText += `\n🎯 *TOTAL FINAL: $${finalTotal.toLocaleString()} CUP*\n\n`;
     
@@ -302,7 +305,7 @@ export function CheckoutModal({ isOpen, onClose, onCheckout, items, total }: Che
       }
     } else {
       orderText += `📍 *ZONA DE ENTREGA:*\n`;
-      orderText += `${deliveryZone.replace(' > ', ' → ')}\n`;
+      orderText += `${deliveryZone}\n`;
       orderText += `💰 Costo de entrega: $${deliveryCost.toLocaleString()} CUP\n\n`;
     }
     
@@ -336,8 +339,8 @@ export function CheckoutModal({ isOpen, onClose, onCheckout, items, total }: Che
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (deliveryZone === 'Por favor seleccionar su Barrio/Zona') {
-      alert('Por favor selecciona un barrio específico para la entrega.');
+    if (deliveryOption === '' || deliveryZone === '') {
+      alert('Por favor selecciona una opción de entrega.');
       return;
     }
 
@@ -347,8 +350,8 @@ export function CheckoutModal({ isOpen, onClose, onCheckout, items, total }: Che
       const { orderId } = generateOrderText();
       const { cashTotal, transferTotal } = calculateTotals();
       const transferFee = transferTotal - items.filter(item => item.paymentType === 'transfer').reduce((sum, item) => {
-        const moviePrice = EMBEDDED_PRICES.moviePrice;
-        const seriesPrice = EMBEDDED_PRICES.seriesPrice;
+        const moviePrice = adminState.prices.moviePrice;
+        const seriesPrice = adminState.prices.seriesPrice;
         const basePrice = item.type === 'movie' ? moviePrice : (item.selectedSeasons?.length || 1) * seriesPrice;
         return sum + basePrice;
       }, 0);
@@ -415,21 +418,21 @@ export function CheckoutModal({ isOpen, onClose, onCheckout, items, total }: Che
                 <div className="bg-white rounded-xl p-4 border border-gray-200">
                   <div className="text-center">
                     <div className="text-2xl sm:text-3xl font-bold text-blue-600 mb-2">
-                      $${total.toLocaleString()} CUP
+                      ${total.toLocaleString()} CUP
                     </div>
                     <div className="text-sm text-gray-600">Subtotal Contenido</div>
-                    <div className="text-xs text-gray-500 mt-1">${items.length} elementos</div>
+                    <div className="text-xs text-gray-500 mt-1">{items.length} elementos</div>
                   </div>
                 </div>
                 
                 <div className="bg-white rounded-xl p-4 border border-gray-200">
                   <div className="text-center">
                     <div className="text-2xl sm:text-3xl font-bold text-green-600 mb-2">
-                      $${deliveryCost.toLocaleString()} CUP
+                      ${deliveryCost.toLocaleString()} CUP
                     </div>
                     <div className="text-sm text-gray-600">Costo de Entrega</div>
                     <div className="text-xs text-gray-500 mt-1">
-                      ${deliveryZone.split(' > ')[2] || 'Seleccionar zona'}
+                      {deliveryZone || 'Seleccionar zona'}
                     </div>
                   </div>
                 </div>
@@ -439,7 +442,7 @@ export function CheckoutModal({ isOpen, onClose, onCheckout, items, total }: Che
                 <div className="flex flex-col sm:flex-row justify-between items-center space-y-2 sm:space-y-0">
                   <span className="text-lg sm:text-xl font-bold text-gray-900">Total Final:</span>
                   <span className="text-2xl sm:text-3xl font-bold text-green-600">
-                    $${finalTotal.toLocaleString()} CUP
+                    ${finalTotal.toLocaleString()} CUP
                   </span>
                 </div>
               </div>
@@ -503,7 +506,7 @@ export function CheckoutModal({ isOpen, onClose, onCheckout, items, total }: Che
                 <div className="bg-white rounded-2xl p-4 sm:p-6 border border-gray-200 shadow-sm">
                   <h3 className="text-lg sm:text-xl font-bold mb-4 flex items-center text-gray-900">
                     <MapPin className="h-5 w-5 mr-3 text-green-600" />
-                    Zona de Entrega
+                    Opciones de Entrega
                   </h3>
                   
                   <div className="bg-gradient-to-r from-green-50 to-blue-50 rounded-xl p-4 mb-4 border border-green-200">
@@ -511,47 +514,93 @@ export function CheckoutModal({ isOpen, onClose, onCheckout, items, total }: Che
                       <div className="bg-green-100 p-2 rounded-lg mr-3">
                         <span className="text-sm">📍</span>
                       </div>
-                      <h4 className="font-semibold text-green-900">Información de Entrega</h4>
+                      <h4 className="font-semibold text-green-900">¿Cómo desea recibir su pedido?</h4>
                     </div>
                     <p className="text-sm text-green-700 ml-11">
-                      Seleccione su zona para calcular el costo de entrega. Los precios pueden variar según la distancia.
+                      Elija si quiere entrega a domicilio o recogida en el local.
                     </p>
                   </div>
                   
+                  {/* Delivery Option Selection */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Seleccionar Barrio/Zona *
+                      Tipo de Entrega *
                     </label>
                     <select
-                      value={deliveryZone}
-                      onChange={(e) => setDeliveryZone(e.target.value)}
+                      value={deliveryOption}
+                      onChange={(e) => {
+                        setDeliveryOption(e.target.value);
+                        setDeliveryZone('');
+                      }}
                       required
                       className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:border-transparent transition-all bg-white ${
-                        deliveryZone === 'Por favor seleccionar su Barrio/Zona'
+                        deliveryOption === ''
                           ? 'border-orange-300 focus:ring-orange-500 bg-orange-50'
                           : 'border-gray-300 focus:ring-green-500'
                       }`}
                     >
-                      {Object.entries(allZones).map(([zone, cost]) => (
-                        <option key={zone} value={zone}>
-                          {zone === 'Por favor seleccionar su Barrio/Zona' 
-                            ? zone 
-                            : `${zone.split(' > ')[2] || zone} ${cost > 0 ? `- $${cost.toLocaleString()} CUP` : ''}`
-                          }
-                        </option>
-                      ))}
+                      <option value="">Seleccione una opción</option>
+                      <option value="delivery">Entrega a domicilio</option>
+                      <option value="pickup">Recogida en el local</option>
                     </select>
                     
-                    {deliveryZone === 'Por favor seleccionar su Barrio/Zona' && (
+                    {deliveryOption === '' && (
                       <div className="mt-3 p-3 bg-orange-50 rounded-lg border border-orange-200">
                         <div className="flex items-center">
                           <span className="text-orange-600 mr-2">⚠️</span>
                           <span className="text-sm font-medium text-orange-700">
-                            Por favor seleccione su zona de entrega para continuar
+                            Por favor seleccione el tipo de entrega para continuar
                           </span>
                         </div>
                       </div>
                     )}
+                  </div>
+                  
+                  {/* Zone Selection based on delivery option */}
+                  {deliveryOption === 'delivery' && (
+                    <div className="mt-4">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Seleccionar Barrio/Zona *
+                      </label>
+                      <select
+                        value={deliveryZone}
+                        onChange={(e) => setDeliveryZone(e.target.value)}
+                        required
+                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all bg-white"
+                      >
+                        <option value="">Por favor seleccionar su Barrio/Zona</option>
+                        {adminState.deliveryZones.map((zone) => (
+                          <option key={zone.id} value={zone.name}>
+                            {zone.name} - ${zone.cost.toLocaleString()} CUP
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                  
+                  {deliveryOption === 'pickup' && (
+                    <div className="mt-4">
+                      <div className="bg-blue-50 rounded-xl p-4 border border-blue-200">
+                        <div className="flex items-center mb-2">
+                          <div className="bg-blue-100 p-2 rounded-lg mr-3">
+                            <span className="text-sm">🏪</span>
+                          </div>
+                          <span className="text-sm font-semibold text-blue-800">Recogida en Local - GRATIS</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setDeliveryZone('Local TV a la Carta')}
+                          className={`w-full mt-2 px-4 py-3 rounded-xl font-medium transition-all ${
+                            deliveryZone === 'Local TV a la Carta'
+                              ? 'bg-green-500 text-white'
+                              : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                          }`}
+                        >
+                          {deliveryZone === 'Local TV a la Carta' ? '✓ Seleccionado' : 'Seleccionar Local TV a la Carta'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
                     
                     {deliveryCost > 0 && (
                       <div className="mt-3 p-4 bg-gradient-to-r from-green-50 to-blue-50 rounded-xl border border-green-200">
@@ -566,12 +615,12 @@ export function CheckoutModal({ isOpen, onClose, onCheckout, items, total }: Che
                           </div>
                           <div className="bg-white rounded-lg px-3 py-2 border border-green-300">
                             <span className="text-lg font-bold text-green-600">
-                              $${deliveryCost.toLocaleString()} CUP
+                              ${deliveryCost.toLocaleString()} CUP
                             </span>
                           </div>
                         </div>
                         <div className="text-xs text-green-600 ml-11">
-                          ✅ Zona: ${deliveryZone.split(' > ')[2] || deliveryZone}
+                          ✅ Zona: {deliveryZone}
                         </div>
                       </div>
                     )}
@@ -672,7 +721,6 @@ export function CheckoutModal({ isOpen, onClose, onCheckout, items, total }: Che
                         )}
                       </div>
                     )}
-                  </div>
                 </div>
 
                 {/* Action Buttons */}
@@ -687,9 +735,9 @@ export function CheckoutModal({ isOpen, onClose, onCheckout, items, total }: Che
                   <button
                     type="button"
                     onClick={handleGenerateOrder}
-                    disabled={!isFormValid || deliveryZone === 'Por favor seleccionar su Barrio/Zona'}
+                    disabled={!isFormValid || deliveryOption === '' || deliveryZone === ''}
                     className={`flex-1 px-6 py-4 rounded-xl transition-all font-medium ${
-                      isFormValid && deliveryZone !== 'Por favor seleccionar su Barrio/Zona'
+                      isFormValid && deliveryOption !== '' && deliveryZone !== ''
                         ? 'bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white'
                         : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                     }`}
@@ -698,7 +746,7 @@ export function CheckoutModal({ isOpen, onClose, onCheckout, items, total }: Che
                   </button>
                   <button
                     type="submit"
-                    disabled={isProcessing || !isFormValid || deliveryZone === 'Por favor seleccionar su Barrio/Zona'}
+                    disabled={isProcessing || !isFormValid || deliveryOption === '' || deliveryZone === ''}
                     className="flex-1 px-6 py-4 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl transition-all font-medium flex items-center justify-center"
                   >
                     {isProcessing ? (
