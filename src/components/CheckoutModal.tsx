@@ -64,7 +64,7 @@ interface CheckoutModalProps {
 // Base delivery zones - these will be combined with embedded zones
 const BASE_DELIVERY_ZONES = {
   'Por favor seleccionar su Barrio/Zona': 0,
-  
+  'Entrega en Local > TV a la Carta > Local TV a la Carta': 0
 };
 
 export function CheckoutModal({ isOpen, onClose, onCheckout, items, total }: CheckoutModalProps) {
@@ -96,12 +96,11 @@ export function CheckoutModal({ isOpen, onClose, onCheckout, items, total }: Che
   // Combine embedded zones with base zones
   const allZones = { 
     ...BASE_DELIVERY_ZONES, 
-    ...embeddedZonesMap,
-    'Entrega en Local > TV a la Carta > Reparto Nuevo Vista Alegre': 0
+    ...embeddedZonesMap
   };
   const deliveryCost = allZones[deliveryZone as keyof typeof allZones] || 0;
   const finalTotal = total + deliveryCost;
-  const isLocalPickup = deliveryZone === 'Entrega en Local > TV a la Carta > Reparto Nuevo Vista Alegre';
+  const isLocalPickup = deliveryZone === 'Entrega en Local > TV a la Carta > Local TV a la Carta';
 
   // Get current transfer fee percentage from embedded prices
   const transferFeePercentage = EMBEDDED_PRICES.transferFeePercentage;
