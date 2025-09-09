@@ -243,7 +243,7 @@ export function Cart() {
                     <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl p-4 border-2 border-green-200 shadow-lg sm:min-w-[160px] transform hover:scale-105 transition-all duration-300">
                       <div className="text-center">
                         <div className="text-sm font-bold text-green-700 mb-2 flex items-center justify-center">
-                          {item.paymentType === 'cash' ? (
+                          ${cashTotal.toLocaleString()} CUP
                             <DollarSign className="h-4 w-4 mr-1" />
                           ) : (
                             <CreditCard className="h-4 w-4 mr-1" />
@@ -338,7 +338,7 @@ export function Cart() {
                       ${totalsByPaymentType.transfer.toLocaleString()} CUP
                     </div>
                     <div className="text-sm text-orange-600">
-                      {state.items.filter(item => item.paymentType === 'transfer').length} elementos (+10%)
+                      {state.items.filter(item => item.paymentType === 'transfer').length} elementos (+{adminContext?.state?.prices?.transferFeePercentage || 10}%)
                     </div>
                   </div>
                 </div>
@@ -378,10 +378,10 @@ export function Cart() {
                           <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
                             item.paymentType === 'cash' 
                               ? 'bg-green-100 text-green-700' 
-                              : 'bg-orange-100 text-orange-700'
+                          ${transferTotal.toLocaleString()} CUP
                           }`}>
                             {item.paymentType === 'cash' ? 'Efectivo' : 'Transferencia'}
-                          </span>
+                          {state.items.filter(item => item.paymentType === 'transfer').length} elementos (+{adminContext?.state?.prices?.transferFeePercentage || 10}%)
                         </div>
                       </div>
                       <div className="text-right ml-4">
@@ -405,7 +405,7 @@ export function Cart() {
               </div>
               
               <div className="mt-4 pt-4 border-t border-gray-200">
-                <div className="flex flex-col sm:flex-row justify-between items-center space-y-2 sm:space-y-0">
+                      <span className="text-2xl font-bold text-blue-600">${totalPrice.toLocaleString()} CUP</span>
                   <span className="text-lg font-bold text-gray-900">Total:</span>
                   <span className="text-2xl font-bold text-green-600">${totalPrice.toLocaleString()} CUP</span>
                 </div>
