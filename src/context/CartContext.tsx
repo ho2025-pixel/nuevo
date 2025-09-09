@@ -28,6 +28,7 @@ type CartAction =
   | { type: 'CLEAR_CART' }
   | { type: 'LOAD_CART'; payload: SeriesCartItem[] }
   | { type: 'UPDATE_EMBEDDED_PRICES'; payload: any };
+  | { type: 'UPDATE_EMBEDDED_PRICES'; payload: any };
 
 interface CartContextType {
   state: CartState;
@@ -94,6 +95,9 @@ function cartReducer(state: CartState, action: CartAction): CartState {
     case 'UPDATE_EMBEDDED_PRICES':
       // Trigger re-render when prices change
       return { ...state };
+    case 'UPDATE_EMBEDDED_PRICES':
+      // Trigger re-render when prices change
+      return { ...state };
     default:
       return state;
   }
@@ -102,11 +106,29 @@ function cartReducer(state: CartState, action: CartAction): CartState {
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(cartReducer, { items: [], total: 0 });
   const [currentPrices, setCurrentPrices] = React.useState(EMBEDDED_PRICES);
+  const [currentPrices, setCurrentPrices] = React.useState(EMBEDDED_PRICES);
   const [toast, setToast] = React.useState<{
     message: string;
     type: 'success' | 'error';
     isVisible: boolean;
   }>({ message: '', type: 'success', isVisible: false });
+
+  // Real-time sync with admin panel
+  useEffect(() => {
+    const handleAdminConfigUpdate = (event: CustomEvent) => {
+      const { prices } = event.detail;
+      if (prices) {
+        setCurrentPrices(prices);
+        dispatch({ type: 'UPDATE_EMBEDDED_PRICES', payload: prices });
+      }
+    };
+
+    window.addEventListener('admin_config_update', handleAdminConfigUpdate as EventListener);
+    
+    return () => {
+      window.removeEventListener('admin_config_update', handleAdminConfigUpdate as EventListener);
+    };
+  }, []);
 
   // Real-time sync with admin panel
   useEffect(() => {
@@ -230,7 +252,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     const moviePrice = currentPrices.moviePrice;
     const seriesPrice = currentPrices.seriesPrice;
     const transferFeePercentage = currentPrices.transferFeePercentage;
-    
     if (item.type === 'movie') {
       const basePrice = moviePrice;
       return item.paymentType === 'transfer' ? Math.round(basePrice * (1 + transferFeePercentage / 100)) : basePrice;
