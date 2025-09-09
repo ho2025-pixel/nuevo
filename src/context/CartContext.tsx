@@ -26,9 +26,7 @@ type CartAction =
   | { type: 'UPDATE_SEASONS'; payload: { id: number; seasons: number[] } }
   | { type: 'UPDATE_PAYMENT_TYPE'; payload: { id: number; paymentType: 'cash' | 'transfer' } }
   | { type: 'CLEAR_CART' }
-  | { type: 'LOAD_CART'; payload: SeriesCartItem[] }
-  | { type: 'UPDATE_EMBEDDED_PRICES'; payload: any };
-  | { type: 'UPDATE_EMBEDDED_PRICES'; payload: any };
+  | { type: 'LOAD_CART'; payload: SeriesCartItem[] };
 
 interface CartContextType {
   state: CartState;
@@ -92,12 +90,6 @@ function cartReducer(state: CartState, action: CartAction): CartState {
         items: action.payload,
         total: action.payload.length
       };
-    case 'UPDATE_EMBEDDED_PRICES':
-      // Trigger re-render when prices change
-      return { ...state };
-    case 'UPDATE_EMBEDDED_PRICES':
-      // Trigger re-render when prices change
-      return { ...state };
     default:
       return state;
   }
@@ -105,47 +97,11 @@ function cartReducer(state: CartState, action: CartAction): CartState {
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(cartReducer, { items: [], total: 0 });
-  const [currentPrices, setCurrentPrices] = React.useState(EMBEDDED_PRICES);
-  const [currentPrices, setCurrentPrices] = React.useState(EMBEDDED_PRICES);
   const [toast, setToast] = React.useState<{
     message: string;
     type: 'success' | 'error';
     isVisible: boolean;
   }>({ message: '', type: 'success', isVisible: false });
-
-  // Real-time sync with admin panel
-  useEffect(() => {
-    const handleAdminConfigUpdate = (event: CustomEvent) => {
-      const { prices } = event.detail;
-      if (prices) {
-        setCurrentPrices(prices);
-        dispatch({ type: 'UPDATE_EMBEDDED_PRICES', payload: prices });
-      }
-    };
-
-    window.addEventListener('admin_config_update', handleAdminConfigUpdate as EventListener);
-    
-    return () => {
-      window.removeEventListener('admin_config_update', handleAdminConfigUpdate as EventListener);
-    };
-  }, []);
-
-  // Real-time sync with admin panel
-  useEffect(() => {
-    const handleAdminConfigUpdate = (event: CustomEvent) => {
-      const { prices } = event.detail;
-      if (prices) {
-        setCurrentPrices(prices);
-        dispatch({ type: 'UPDATE_EMBEDDED_PRICES', payload: prices });
-      }
-    };
-
-    window.addEventListener('admin_config_update', handleAdminConfigUpdate as EventListener);
-    
-    return () => {
-      window.removeEventListener('admin_config_update', handleAdminConfigUpdate as EventListener);
-    };
-  }, []);
 
   // Clear cart on page refresh
   useEffect(() => {
@@ -249,9 +205,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   };
 
   const calculateItemPrice = (item: SeriesCartItem): number => {
-    const moviePrice = currentPrices.moviePrice;
-    const seriesPrice = currentPrices.seriesPrice;
-    const transferFeePercentage = currentPrices.transferFeePercentage;
+    // Use embedded prices
+    const moviePrice = EMBEDDED_PRICES.moviePrice;
+    const seriesPrice = EMBEDDED_PRICES.seriesPrice;
+    const transferFeePercentage = EMBEDDED_PRICES.transferFeePercentage;
+    
     if (item.type === 'movie') {
       const basePrice = moviePrice;
       return item.paymentType === 'transfer' ? Math.round(basePrice * (1 + transferFeePercentage / 100)) : basePrice;
@@ -269,9 +227,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   };
 
   const calculateTotalByPaymentType = (): { cash: number; transfer: number } => {
-    const moviePrice = currentPrices.moviePrice;
-    const seriesPrice = currentPrices.seriesPrice;
-    const transferFeePercentage = currentPrices.transferFeePercentage;
+    const moviePrice = EMBEDDED_PRICES.moviePrice;
+    const seriesPrice = EMBEDDED_PRICES.seriesPrice;
+    const transferFeePercentage = EMBEDDED_PRICES.transferFeePercentage;
     
     return state.items.reduce((totals, item) => {
       const basePrice = item.type === 'movie' ? moviePrice : (item.selectedSeasons?.length || 1) * seriesPrice;
