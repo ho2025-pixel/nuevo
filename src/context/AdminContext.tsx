@@ -4,15 +4,34 @@ import JSZip from 'jszip';
 // CONFIGURACIÓN EMBEBIDA - Generada automáticamente
 const EMBEDDED_CONFIG = {
   "version": "2.1.0",
-  "lastExport": "2025-09-05T08:44:06.529Z",
+  "lastExport": "2025-09-10T07:48:28.201Z",
   "prices": {
-    "moviePrice": 80,
-    "seriesPrice": 300,
-    "transferFeePercentage": 10,
-    "novelPricePerChapter": 5
+    "moviePrice": 90,
+    "seriesPrice": 400,
+    "transferFeePercentage": 15,
+    "novelPricePerChapter": 10
   },
-  "deliveryZones": [],
-  "novels": [],
+  "deliveryZones": [
+    {
+      "name": "nuevo",
+      "cost": 100,
+      "id": 1757490476632,
+      "createdAt": "2025-09-10T07:47:56.632Z",
+      "updatedAt": "2025-09-10T07:47:56.632Z"
+    }
+  ],
+  "novels": [
+    {
+      "titulo": "pasion",
+      "genero": "drama",
+      "capitulos": 1,
+      "año": 2025,
+      "descripcion": "",
+      "id": 1757490486552,
+      "createdAt": "2025-09-10T07:48:06.552Z",
+      "updatedAt": "2025-09-10T07:48:06.552Z"
+    }
+  ],
   "settings": {
     "autoSync": true,
     "syncInterval": 300000,
@@ -177,6 +196,12 @@ function adminReducer(state: AdminState, action: AdminAction): AdminState {
         prices: action.payload,
         lastExport: new Date().toISOString(),
       };
+      
+      // Broadcast price changes to entire app
+      window.dispatchEvent(new CustomEvent('admin_prices_updated', { 
+        detail: action.payload 
+      }));
+      
       return {
         ...state,
         prices: action.payload,
@@ -196,6 +221,12 @@ function adminReducer(state: AdminState, action: AdminAction): AdminState {
         deliveryZones: [...state.systemConfig.deliveryZones, newZone],
         lastExport: new Date().toISOString(),
       };
+      
+      // Broadcast delivery zones changes
+      window.dispatchEvent(new CustomEvent('admin_delivery_zones_updated', { 
+        detail: [...state.deliveryZones, newZone]
+      }));
+      
       return {
         ...state,
         deliveryZones: [...state.deliveryZones, newZone],
@@ -214,6 +245,12 @@ function adminReducer(state: AdminState, action: AdminAction): AdminState {
         deliveryZones: updatedZones,
         lastExport: new Date().toISOString(),
       };
+      
+      // Broadcast delivery zones changes
+      window.dispatchEvent(new CustomEvent('admin_delivery_zones_updated', { 
+        detail: updatedZones
+      }));
+      
       return {
         ...state,
         deliveryZones: updatedZones,
@@ -228,6 +265,12 @@ function adminReducer(state: AdminState, action: AdminAction): AdminState {
         deliveryZones: filteredZones,
         lastExport: new Date().toISOString(),
       };
+      
+      // Broadcast delivery zones changes
+      window.dispatchEvent(new CustomEvent('admin_delivery_zones_updated', { 
+        detail: filteredZones
+      }));
+      
       return {
         ...state,
         deliveryZones: filteredZones,
@@ -247,6 +290,12 @@ function adminReducer(state: AdminState, action: AdminAction): AdminState {
         novels: [...state.systemConfig.novels, newNovel],
         lastExport: new Date().toISOString(),
       };
+      
+      // Broadcast novels changes
+      window.dispatchEvent(new CustomEvent('admin_novels_updated', { 
+        detail: [...state.novels, newNovel]
+      }));
+      
       return {
         ...state,
         novels: [...state.novels, newNovel],
@@ -265,6 +314,12 @@ function adminReducer(state: AdminState, action: AdminAction): AdminState {
         novels: updatedNovels,
         lastExport: new Date().toISOString(),
       };
+      
+      // Broadcast novels changes
+      window.dispatchEvent(new CustomEvent('admin_novels_updated', { 
+        detail: updatedNovels
+      }));
+      
       return {
         ...state,
         novels: updatedNovels,
@@ -279,6 +334,12 @@ function adminReducer(state: AdminState, action: AdminAction): AdminState {
         novels: filteredNovels,
         lastExport: new Date().toISOString(),
       };
+      
+      // Broadcast novels changes
+      window.dispatchEvent(new CustomEvent('admin_novels_updated', { 
+        detail: filteredNovels
+      }));
+      
       return {
         ...state,
         novels: filteredNovels,
@@ -515,7 +576,7 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
     addNotification({
       type: 'success',
       title: 'Precios actualizados',
-      message: 'Los precios se han actualizado y sincronizado automáticamente',
+      message: 'Los precios se han actualizado y sincronizado automáticamente en toda la aplicación',
       section: 'Precios',
       action: 'update'
     });
@@ -527,7 +588,7 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
     addNotification({
       type: 'success',
       title: 'Zona de entrega agregada',
-      message: `Se agregó la zona "${zone.name}" y se sincronizó automáticamente`,
+      message: `Se agregó la zona "${zone.name}" y se sincronizó automáticamente en toda la aplicación`,
       section: 'Zonas de Entrega',
       action: 'create'
     });
@@ -539,7 +600,7 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
     addNotification({
       type: 'success',
       title: 'Zona de entrega actualizada',
-      message: `Se actualizó la zona "${zone.name}" y se sincronizó automáticamente`,
+      message: `Se actualizó la zona "${zone.name}" y se sincronizó automáticamente en toda la aplicación`,
       section: 'Zonas de Entrega',
       action: 'update'
     });
@@ -552,7 +613,7 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
     addNotification({
       type: 'warning',
       title: 'Zona de entrega eliminada',
-      message: `Se eliminó la zona "${zone?.name || 'Desconocida'}" y se sincronizó automáticamente`,
+      message: `Se eliminó la zona "${zone?.name || 'Desconocida'}" y se sincronizó automáticamente en toda la aplicación`,
       section: 'Zonas de Entrega',
       action: 'delete'
     });
@@ -564,7 +625,7 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
     addNotification({
       type: 'success',
       title: 'Novela agregada',
-      message: `Se agregó la novela "${novel.titulo}" y se sincronizó automáticamente`,
+      message: `Se agregó la novela "${novel.titulo}" y se sincronizó automáticamente en toda la aplicación`,
       section: 'Gestión de Novelas',
       action: 'create'
     });
@@ -576,7 +637,7 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
     addNotification({
       type: 'success',
       title: 'Novela actualizada',
-      message: `Se actualizó la novela "${novel.titulo}" y se sincronizó automáticamente`,
+      message: `Se actualizó la novela "${novel.titulo}" y se sincronizó automáticamente en toda la aplicación`,
       section: 'Gestión de Novelas',
       action: 'update'
     });
@@ -589,7 +650,7 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
     addNotification({
       type: 'warning',
       title: 'Novela eliminada',
-      message: `Se eliminó la novela "${novel?.titulo || 'Desconocida'}" y se sincronizó automáticamente`,
+      message: `Se eliminó la novela "${novel?.titulo || 'Desconocida'}" y se sincronizó automáticamente en toda la aplicación`,
       section: 'Gestión de Novelas',
       action: 'delete'
     });
@@ -680,7 +741,7 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
       addNotification({
         type: 'info',
         title: 'Exportación de código fuente iniciada',
-        message: 'Generando sistema completo con código fuente...',
+        message: 'Generando sistema completo con configuración embebida...',
         section: 'Sistema',
         action: 'export_source_start'
       });
@@ -696,8 +757,8 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
 
       addNotification({
         type: 'success',
-        title: 'Código fuente exportado',
-        message: 'El sistema completo se ha exportado como código fuente',
+        title: 'Código fuente exportado con configuración embebida',
+        message: 'El sistema completo se ha exportado con todas las modificaciones aplicadas y embebidas en el código fuente',
         section: 'Sistema',
         action: 'export_source'
       });
@@ -741,7 +802,7 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
       addNotification({
         type: 'info',
         title: 'Sincronización completa iniciada',
-        message: 'Sincronizando todas las secciones del sistema...',
+        message: 'Sincronizando todas las secciones del sistema en tiempo real...',
         section: 'Sistema',
         action: 'sync_all_start'
       });
@@ -771,7 +832,7 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
       addNotification({
         type: 'success',
         title: 'Sincronización completa exitosa',
-        message: 'Todas las secciones se han sincronizado correctamente',
+        message: 'Todas las secciones se han sincronizado correctamente en tiempo real en toda la aplicación',
         section: 'Sistema',
         action: 'sync_all'
       });
@@ -833,7 +894,7 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
       addNotification({
         type: 'success',
         title: 'Sincronización completada',
-        message: 'Todos los datos se han sincronizado correctamente',
+        message: 'Todos los datos se han sincronizado correctamente en tiempo real',
         section: 'Sistema',
         action: 'sync'
       });
