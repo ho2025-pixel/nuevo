@@ -1,14 +1,6 @@
 import React from 'react';
 import { DollarSign, Tv, Film, Star, CreditCard } from 'lucide-react';
 
-// PRECIOS EMBEBIDOS - Generados automáticamente
-const EMBEDDED_PRICES = {
-  "moviePrice": 80,
-  "seriesPrice": 300,
-  "transferFeePercentage": 10,
-  "novelPricePerChapter": 5
-};
-
 interface PriceCardProps {
   type: 'movie' | 'tv';
   selectedSeasons?: number[];
@@ -17,22 +9,41 @@ interface PriceCardProps {
 }
 
 export function PriceCard({ type, selectedSeasons = [], episodeCount = 0, isAnime = false }: PriceCardProps) {
-  // Use embedded prices
-  const moviePrice = EMBEDDED_PRICES.moviePrice;
-  const seriesPrice = EMBEDDED_PRICES.seriesPrice;
-  const transferFeePercentage = EMBEDDED_PRICES.transferFeePercentage;
+  // Get current prices from admin context
+  const getCurrentPrices = () => {
+    try {
+      const adminState = localStorage.getItem('admin_system_state');
+      if (adminState) {
+        const state = JSON.parse(adminState);
+        return {
+          moviePrice: state.prices?.moviePrice || 80,
+          seriesPrice: state.prices?.seriesPrice || 300,
+          transferFeePercentage: state.prices?.transferFeePercentage || 10
+        };
+      }
+    } catch (error) {
+      console.warn('Error getting admin prices:', error);
+    }
+    return {
+      moviePrice: 80,
+      seriesPrice: 300,
+      transferFeePercentage: 10
+    };
+  };
+
+  const currentPrices = getCurrentPrices();
   
   const calculatePrice = () => {
     if (type === 'movie') {
-      return moviePrice;
+      return currentPrices.moviePrice;
     } else {
       // Series: dynamic price per season
-      return selectedSeasons.length * seriesPrice;
+      return selectedSeasons.length * currentPrices.seriesPrice;
     }
   };
 
   const price = calculatePrice();
-  const transferPrice = Math.round(price * (1 + transferFeePercentage / 100));
+  const transferPrice = Math.round(price * (1 + currentPrices.transferFeePercentage / 100));
   
   const getIcon = () => {
     if (type === 'movie') {
@@ -81,7 +92,7 @@ export function PriceCard({ type, selectedSeasons = [], episodeCount = 0, isAnim
               Efectivo
             </span>
             <span className="text-xl font-black text-green-700">
-              $${price.toLocaleString()} CUP
+              ${price.toLocaleString()} CUP
             </span>
           </div>
         </div>
@@ -96,17 +107,17 @@ export function PriceCard({ type, selectedSeasons = [], episodeCount = 0, isAnim
               Transferencia
             </span>
             <span className="text-xl font-black text-orange-700">
-              $${transferPrice.toLocaleString()} CUP
+              ${transferPrice.toLocaleString()} CUP
             </span>
           </div>
           <div className="text-sm text-orange-600 font-semibold bg-orange-100 px-2 py-1 rounded-full text-center">
-            +${transferFeePercentage}% recargo bancario
+            +{currentPrices.transferFeePercentage}% recargo bancario
           </div>
         </div>
         
         {type === 'tv' && selectedSeasons.length > 0 && (
           <div className="text-sm text-green-600 font-bold text-center bg-gradient-to-r from-green-100 to-emerald-100 rounded-xl p-3 border border-green-200">
-            $${(price / selectedSeasons.length).toLocaleString()} CUP por temporada (efectivo)
+            ${(price / selectedSeasons.length).toLocaleString()} CUP por temporada (efectivo)
           </div>
         )}
       </div>
