@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { CartProvider } from './context/CartContext';
 import { AdminProvider } from './context/AdminContext';
+import { realTimeSyncService } from './utils/realTimeSync';
 import { Header } from './components/Header';
 import { Home } from './pages/Home';
 import { Movies } from './pages/Movies';
@@ -15,6 +16,16 @@ import { Cart } from './pages/Cart';
 import { AdminPanel } from './pages/AdminPanel';
 
 function App() {
+  // Inicializar sincronización en tiempo real al montar la app
+  React.useEffect(() => {
+    console.log('🚀 Initializing TV a la Carta with real-time sync...');
+    realTimeSyncService.initialize();
+    
+    return () => {
+      realTimeSyncService.cleanup();
+    };
+  }, []);
+
   // Detectar refresh y redirigir a la página principal
   React.useEffect(() => {
     const handleBeforeUnload = () => {

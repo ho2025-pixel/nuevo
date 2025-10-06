@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Download, BookOpen, Search, Filter, FileText, ShoppingCart, Check, DollarSign, CreditCard, Calculator } from 'lucide-react';
 import { useCart } from '../context/CartContext';
+import { realTimeSyncService } from '../utils/realTimeSync';
 import type { NovelCartItem } from '../types/movie';
 
 interface Novela {
@@ -36,21 +37,28 @@ export function NovelasModal({ isOpen, onClose, onFinalizePedido }: NovelasModal
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [adminNovels, setAdminNovels] = useState<any[]>([]);
 
+  // Estado para tracking de actualizaciones en tiempo real
+  const [novelsLastUpdate, setNovelsLastUpdate] = useState<Date>(new Date());
   const currentPrices = getCurrentPrices();
   const novelPricePerChapter = currentPrices.novelPricePerChapter;
   const transferFeePercentage = currentPrices.transferFeePercentage;
   
   const phoneNumber = '+5354690878';
 
-  // Load novels from admin config
+  // Cargar novelas con sincronización en tiempo real
   useEffect(() => {
+    // Inicializar sincronización
+    realTimeSyncService.initialize();
+    
     const loadNovels = () => {
       try {
         const adminConfig = localStorage.getItem('system_config');
         if (adminConfig) {
           const config = JSON.parse(adminConfig);
           if (config.novels) {
+            console.log('🔄 Loading novels in modal:', config.novels.length);
             setAdminNovels(config.novels);
+            setNovelsLastUpdate(new Date());
           }
         }
       } catch (error) {
@@ -60,27 +68,37 @@ export function NovelasModal({ isOpen, onClose, onFinalizePedido }: NovelasModal
 
     loadNovels();
 
-    // Listen for admin updates
+    // Escuchar actualizaciones del admin en tiempo real
     const handleAdminStateChange = (event: CustomEvent) => {
-      if (event.detail.type === 'novel_add' || 
-          event.detail.type === 'novel_update' || 
-          event.detail.type === 'novel_delete') {
+      if (event.detail.category === 'novels' || 
+          event.detail.type?.includes('novel')) {
+        console.log('🔄 Novel change detected in modal:', event.detail);
         loadNovels();
       }
     };
 
     const handleAdminFullSync = (event: CustomEvent) => {
       if (event.detail.config?.novels) {
+        console.log('🔄 Full novels sync in modal:', event.detail.config.novels.length);
         setAdminNovels(event.detail.config.novels);
+        setNovelsLastUpdate(new Date());
       }
     };
 
+    const handleNovelsUpdate = () => {
+      console.log('🔄 Direct novels update in modal');
+      loadNovels();
+    };
     window.addEventListener('admin_state_change', handleAdminStateChange as EventListener);
     window.addEventListener('admin_full_sync', handleAdminFullSync as EventListener);
+    window.addEventListener('home_novels_update', handleNovelsUpdate);
+    window.addEventListener('real_time_full_sync', handleAdminFullSync as EventListener);
 
     return () => {
       window.removeEventListener('admin_state_change', handleAdminStateChange as EventListener);
       window.removeEventListener('admin_full_sync', handleAdminFullSync as EventListener);
+      window.removeEventListener('home_novels_update', handleNovelsUpdate);
+      window.removeEventListener('real_time_full_sync', handleAdminFullSync as EventListener);
     };
   }, []);
 
@@ -481,7 +499,12 @@ export function NovelasModal({ isOpen, onClose, onFinalizePedido }: NovelasModal
                 <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-3 sm:p-6 border-b border-gray-200">
                   <div className="flex items-center mb-4 sm:mb-6">
                     <Filter className="h-5 w-5 sm:h-6 sm:w-6 text-purple-600 mr-3" />
-                    <h4 className="text-base sm:text-xl font-bold text-purple-900">Filtros de Búsqueda Avanzados</h4>
+                    <h4 className="text-base sm:text-xl font-bold text-purple-900">
+                      Filtros de Búsqueda Avanzados
+                      <span className="ml-3 text-xs bg-purple-200 text-purple-700 px-2 py-1 rounded-full">
+                        Actualizado: {novelsLastUpdate.toLocaleTimeString()}
+                      </span>
+                    </h4>
                   </div>
                   
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3 sm:gap-4 mb-4 sm:mb-6">

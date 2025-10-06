@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, MapPin, User, Phone, Home, CreditCard, DollarSign, Send, Calculator, Truck, ExternalLink } from 'lucide-react';
 import { useCart } from '../context/CartContext';
+import { realTimeSyncService } from '../utils/realTimeSync';
 
 export interface CustomerInfo {
   fullName: string;
@@ -64,16 +65,22 @@ export function CheckoutModal({ isOpen, onClose, onCheckout, items, total }: Che
   const [showLocationMap, setShowLocationMap] = useState(false);
   const [errors, setErrors] = useState<Partial<CustomerInfo & { zone: string }>>({});
   const [deliveryZones, setDeliveryZones] = useState<any[]>([]);
+  const [zonesLastUpdate, setZonesLastUpdate] = useState<Date>(new Date());
 
-  // Load delivery zones from admin config
+  // Cargar zonas de entrega con sincronización en tiempo real
   useEffect(() => {
+    // Inicializar sincronización
+    realTimeSyncService.initialize();
+    
     const loadDeliveryZones = () => {
       try {
         const adminConfig = localStorage.getItem('system_config');
         if (adminConfig) {
           const config = JSON.parse(adminConfig);
           if (config.deliveryZones) {
+            console.log('🔄 Loading delivery zones in checkout:', config.deliveryZones);
             setDeliveryZones(config.deliveryZones);
+            setZonesLastUpdate(new Date());
           }
         }
       } catch (error) {
@@ -83,27 +90,37 @@ export function CheckoutModal({ isOpen, onClose, onCheckout, items, total }: Che
 
     loadDeliveryZones();
 
-    // Listen for admin updates
+    // Escuchar actualizaciones del admin en tiempo real
     const handleAdminStateChange = (event: CustomEvent) => {
-      if (event.detail.type === 'delivery_zone_add' || 
-          event.detail.type === 'delivery_zone_update' || 
-          event.detail.type === 'delivery_zone_delete') {
+      if (event.detail.category === 'deliveryZones' || 
+          event.detail.type?.includes('delivery_zone')) {
+        console.log('🔄 Delivery zone change detected in checkout:', event.detail);
         loadDeliveryZones();
       }
     };
 
     const handleAdminFullSync = (event: CustomEvent) => {
       if (event.detail.config?.deliveryZones) {
+        console.log('🔄 Full delivery zones sync in checkout:', event.detail.config.deliveryZones);
         setDeliveryZones(event.detail.config.deliveryZones);
+        setZonesLastUpdate(new Date());
       }
     };
 
+    const handleCheckoutOptionsUpdate = () => {
+      console.log('🔄 Checkout options update triggered');
+      loadDeliveryZones();
+    };
     window.addEventListener('admin_state_change', handleAdminStateChange as EventListener);
     window.addEventListener('admin_full_sync', handleAdminFullSync as EventListener);
+    window.addEventListener('checkout_options_update', handleCheckoutOptionsUpdate);
+    window.addEventListener('real_time_full_sync', handleAdminFullSync as EventListener);
 
     return () => {
       window.removeEventListener('admin_state_change', handleAdminStateChange as EventListener);
       window.removeEventListener('admin_full_sync', handleAdminFullSync as EventListener);
+      window.removeEventListener('checkout_options_update', handleCheckoutOptionsUpdate);
+      window.removeEventListener('real_time_full_sync', handleAdminFullSync as EventListener);
     };
   }, []);
 
@@ -367,7 +384,12 @@ export function CheckoutModal({ isOpen, onClose, onCheckout, items, total }: Che
                         </div>
                         Entrega a Domicilio
                       </h4>
-                      <p className="text-sm text-blue-700 ml-10 sm:ml-12 mt-1">Selecciona tu zona de entrega</p>
+                      <p className="text-sm text-blue-700 ml-10 sm:ml-12 mt-1">
+                        Selecciona tu zona de entrega
+                        <span className="ml-2 text-xs bg-blue-200 px-2 py-1 rounded-full">
+                          Actualizado: {zonesLastUpdate.toLocaleTimeString()}
+                        </span>
+                      </p>
                     </div>
                     <div className="max-h-64 sm:max-h-80 overflow-y-auto bg-white">
                       {deliveryZones.map((zone) => (

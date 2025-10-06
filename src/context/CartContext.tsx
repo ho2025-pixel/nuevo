@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
 import { Toast } from '../components/Toast';
+import { realTimeSyncService } from '../utils/realTimeSync';
 import type { CartItem, NovelCartItem, AllCartItems } from '../types/movie';
 
 // PRECIOS EMBEBIDOS - Generados automáticamente
@@ -110,22 +111,42 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     isVisible: boolean;
   }>({ message: '', type: 'success', isVisible: false });
 
-  // Listen for admin price updates
+  // Escuchar actualizaciones de precios en tiempo real
   useEffect(() => {
+    // Inicializar sincronización
+    realTimeSyncService.initialize();
+    
     const handleAdminStateChange = (event: CustomEvent) => {
-      if (event.detail.type === 'prices') {
+      if (event.detail.type === 'prices' || event.detail.category === 'prices') {
+        console.log('🔄 Price update detected in cart:', event.detail.data);
         setCurrentPrices(event.detail.data);
+        
+        // Mostrar notificación de actualización de precios
+        setToast({
+          message: 'Precios actualizados automáticamente',
+          type: 'success',
+          isVisible: true
+        });
       }
     };
 
     const handleAdminFullSync = (event: CustomEvent) => {
       if (event.detail.config?.prices) {
+        console.log('🔄 Full price sync detected in cart:', event.detail.config.prices);
         setCurrentPrices(event.detail.config.prices);
       }
     };
 
+    const handlePricesUpdate = (event: CustomEvent) => {
+      if (event.detail.prices) {
+        console.log('🔄 Direct price update detected in cart:', event.detail.prices);
+        setCurrentPrices(event.detail.prices);
+      }
+    };
     window.addEventListener('admin_state_change', handleAdminStateChange as EventListener);
     window.addEventListener('admin_full_sync', handleAdminFullSync as EventListener);
+    window.addEventListener('prices_update', handlePricesUpdate as EventListener);
+    window.addEventListener('real_time_full_sync', handleAdminFullSync as EventListener);
 
     // Check for stored admin config
     try {
@@ -133,6 +154,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       if (adminConfig) {
         const config = JSON.parse(adminConfig);
         if (config.prices) {
+          console.log('🔄 Loading stored prices in cart:', config.prices);
           setCurrentPrices(config.prices);
         }
       }
@@ -143,6 +165,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     return () => {
       window.removeEventListener('admin_state_change', handleAdminStateChange as EventListener);
       window.removeEventListener('admin_full_sync', handleAdminFullSync as EventListener);
+      window.removeEventListener('prices_update', handlePricesUpdate as EventListener);
+      window.removeEventListener('real_time_full_sync', handleAdminFullSync as EventListener);
     };
   }, []);
 

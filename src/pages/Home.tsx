@@ -4,6 +4,7 @@ import { ChevronRight, TrendingUp, Star, Monitor, Filter, Calendar, Clock, Flame
 import { tmdbService } from '../services/tmdb';
 import { useCart } from '../context/CartContext';
 import { useAdmin } from '../context/AdminContext';
+import { useRealTimeSync } from '../utils/realTimeSync';
 import { MovieCard } from '../components/MovieCard';
 import { HeroCarousel } from '../components/HeroCarousel';
 import { LoadingSpinner } from '../components/LoadingSpinner';
@@ -19,6 +20,7 @@ type TrendingTimeWindow = 'day' | 'week';
 export function Home() {
   const { state: adminState, addNotification } = useAdmin();
   const { getCurrentPrices } = useCart();
+  const { lastUpdate, forceSyncNovels } = useRealTimeSync();
   const [popularMovies, setPopularMovies] = useState<Movie[]>([]);
   const [popularTVShows, setPopularTVShows] = useState<TVShow[]>([]);
   const [popularAnime, setPopularAnime] = useState<TVShow[]>([]);
@@ -30,7 +32,41 @@ export function Home() {
   const [error, setError] = useState<string | null>(null);
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
   const [showNovelasModal, setShowNovelasModal] = useState(false);
+  const [novelsLastUpdate, setNovelsLastUpdate] = useState<Date>(new Date());
 
+  // Escuchar actualizaciones de novelas en tiempo real
+  useEffect(() => {
+    const handleNovelsUpdate = () => {
+      console.log('🔄 Novels updated, refreshing home page...');
+      setNovelsLastUpdate(new Date());
+      
+      // Actualizar contenido de novelas
+      const novelTrending = getNovelTrendingContent(trendingTimeWindow);
+      setNovelTrendingContent(novelTrending);
+      
+      // Mostrar notificación de actualización
+      addNotification('Catálogo de novelas actualizado', 'success');
+    };
+
+    const handleRealTimeSync = () => {
+      console.log('🔄 Real-time sync triggered, updating all content...');
+      handleNovelsUpdate();
+    };
+
+    window.addEventListener('home_novels_update', handleNovelsUpdate);
+    window.addEventListener('real_time_full_sync', handleRealTimeSync);
+    window.addEventListener('admin_state_change', (event: any) => {
+      if (event.detail.type?.includes('novel')) {
+        handleNovelsUpdate();
+      }
+    });
+
+    return () => {
+      window.removeEventListener('home_novels_update', handleNovelsUpdate);
+      window.removeEventListener('real_time_full_sync', handleRealTimeSync);
+      window.removeEventListener('admin_state_change', handleNovelsUpdate);
+    };
+  }, [trendingTimeWindow, addNotification]);
   const currentPrices = getCurrentPrices();
   const timeWindowLabels = {
     day: 'Hoy + Novelas en Transmisión',
@@ -149,6 +185,11 @@ export function Home() {
     fetchTrendingContent(trendingTimeWindow);
   }, [trendingTimeWindow]);
 
+  // Actualizar novelas cuando cambie el estado del admin o la sincronización
+  useEffect(() => {
+    const novelTrending = getNovelTrendingContent(trendingTimeWindow);
+    setNovelTrendingContent(novelTrending);
+  }, [adminState.novels, trendingTimeWindow, novelsLastUpdate]);
   // Auto-refresh content daily and weekly
   useEffect(() => {
     const now = new Date();
@@ -307,6 +348,15 @@ export function Home() {
             <>
               {adminState.novels.filter(novel => novel.estado === 'transmision').length > 0 ? (
                 <>
+                  <div className="mb-4 text-center">
+                    <div className="inline-flex items-center bg-red-100 text-red-700 px-4 py-2 rounded-full text-sm font-medium">
+                      <Radio className="h-4 w-4 mr-2" />
+                      {adminState.novels.filter(novel => novel.estado === 'transmision').length} novelas en transmisión
+                      <span className="ml-2 text-xs bg-red-200 px-2 py-1 rounded-full">
+                        Actualizado: {novelsLastUpdate.toLocaleTimeString()}
+                      </span>
+                    </div>
+                  </div>
                   <NetflixCarousel itemsPerView={5}>
                     {adminState.novels
                       .filter(novel => novel.estado === 'transmision')
@@ -385,6 +435,15 @@ export function Home() {
             <>
               {adminState.novels.filter(novel => novel.estado === 'finalizada').length > 0 ? (
                 <>
+                  <div className="mb-4 text-center">
+                    <div className="inline-flex items-center bg-green-100 text-green-700 px-4 py-2 rounded-full text-sm font-medium">
+                      <CheckCircle2 className="h-4 w-4 mr-2" />
+                      {adminState.novels.filter(novel => novel.estado === 'finalizada').length} novelas finalizadas
+                      <span className="ml-2 text-xs bg-green-200 px-2 py-1 rounded-full">
+                        Actualizado: {novelsLastUpdate.toLocaleTimeString()}
+                      </span>
+                    </div>
+                  </div>
                   <NetflixCarousel itemsPerView={5}>
                     {adminState.novels
                       .filter(novel => novel.estado === 'finalizada')

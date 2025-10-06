@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
+import { realTimeSyncService } from '../utils/realTimeSync';
 
 interface Novel {
   id: number;
@@ -231,6 +232,11 @@ function adminReducer(state: AdminState, action: AdminAction): AdminState {
 export function AdminProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(adminReducer, initialState);
 
+  // Inicializar sincronización en tiempo real
+  useEffect(() => {
+    realTimeSyncService.initialize();
+  }, []);
+
   // Países disponibles con Cuba incluido
   const availableCountries = [
     'Cuba',
@@ -287,20 +293,22 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
       };
       localStorage.setItem('system_config', JSON.stringify(systemConfig));
 
-      // Emit events for real-time synchronization
-      const event = new CustomEvent('admin_state_change', {
+      // Emitir evento de cambio de estado con información detallada
+      const stateChangeEvent = new CustomEvent('admin_state_change', {
         detail: { 
           state: state,
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
+          type: 'general_update'
         }
       });
-      window.dispatchEvent(event);
+      window.dispatchEvent(stateChangeEvent);
 
     } catch (error) {
       console.error('Error saving admin state:', error);
     }
   }, [state]);
 
+  // Sincronización automática mejorada
   // Real-time sync with other components
   useEffect(() => {
     const syncInterval = setInterval(() => {
@@ -312,8 +320,17 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
             pendingChanges: 0
           }
         });
+        
+        // Emitir evento de sincronización completada
+        const syncCompleteEvent = new CustomEvent('admin_sync_complete', {
+          detail: { 
+            timestamp: new Date().toISOString(),
+            changesApplied: state.syncStatus.pendingChanges
+          }
+        });
+        window.dispatchEvent(syncCompleteEvent);
       }
-    }, 5000); // Sync every 5 seconds
+    }, 2000); // Sync every 2 seconds for faster updates
 
     return () => clearInterval(syncInterval);
   }, [state.syncStatus.pendingChanges]);
@@ -345,15 +362,22 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
     dispatch({ type: 'ADD_NOVEL', payload: novel });
     addNotification(`Novela "${novel.titulo}" agregada correctamente`, 'success');
     
-    // Emit specific event for novel addition
-    const event = new CustomEvent('admin_state_change', {
+    // Emitir evento específico para adición de novela con sincronización inmediata
+    const novelAddEvent = new CustomEvent('admin_state_change', {
       detail: { 
         type: 'novel_add',
         data: novel,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        action: 'add',
+        category: 'novels'
       }
     });
-    window.dispatchEvent(event);
+    window.dispatchEvent(novelAddEvent);
+    
+    // Forzar sincronización inmediata
+    setTimeout(() => {
+      realTimeSyncService.forceSyncNovels();
+    }, 100);
   };
 
   const updateNovel = (novel: Novel) => {
@@ -364,15 +388,22 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
     dispatch({ type: 'UPDATE_NOVEL', payload: updatedNovel });
     addNotification(`Novela "${novel.titulo}" actualizada correctamente`, 'success');
     
-    // Emit specific event for novel update
-    const event = new CustomEvent('admin_state_change', {
+    // Emitir evento específico para actualización de novela
+    const novelUpdateEvent = new CustomEvent('admin_state_change', {
       detail: { 
         type: 'novel_update',
         data: updatedNovel,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        action: 'update',
+        category: 'novels'
       }
     });
-    window.dispatchEvent(event);
+    window.dispatchEvent(novelUpdateEvent);
+    
+    // Forzar sincronización inmediata
+    setTimeout(() => {
+      realTimeSyncService.forceSyncNovels();
+    }, 100);
   };
 
   const deleteNovel = (id: number) => {
@@ -382,15 +413,22 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
       addNotification(`Novela "${novel.titulo}" eliminada`, 'info');
     }
     
-    // Emit specific event for novel deletion
-    const event = new CustomEvent('admin_state_change', {
+    // Emitir evento específico para eliminación de novela
+    const novelDeleteEvent = new CustomEvent('admin_state_change', {
       detail: { 
         type: 'novel_delete',
-        data: { id },
-        timestamp: new Date().toISOString()
+        data: { id, novel },
+        timestamp: new Date().toISOString(),
+        action: 'delete',
+        category: 'novels'
       }
     });
-    window.dispatchEvent(event);
+    window.dispatchEvent(novelDeleteEvent);
+    
+    // Forzar sincronización inmediata
+    setTimeout(() => {
+      realTimeSyncService.forceSyncNovels();
+    }, 100);
   };
 
   const addDeliveryZone = (zoneData: Omit<DeliveryZone, 'id' | 'createdAt' | 'updatedAt'>) => {
@@ -403,15 +441,22 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
     dispatch({ type: 'ADD_DELIVERY_ZONE', payload: zone });
     addNotification(`Zona de entrega "${zone.name}" agregada`, 'success');
     
-    // Emit specific event for delivery zone addition
-    const event = new CustomEvent('admin_state_change', {
+    // Emitir evento específico para adición de zona de entrega
+    const zoneAddEvent = new CustomEvent('admin_state_change', {
       detail: { 
         type: 'delivery_zone_add',
         data: zone,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        action: 'add',
+        category: 'deliveryZones'
       }
     });
-    window.dispatchEvent(event);
+    window.dispatchEvent(zoneAddEvent);
+    
+    // Forzar sincronización inmediata
+    setTimeout(() => {
+      realTimeSyncService.forceSyncDeliveryZones();
+    }, 100);
   };
 
   const updateDeliveryZone = (zone: DeliveryZone) => {
@@ -422,15 +467,22 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
     dispatch({ type: 'UPDATE_DELIVERY_ZONE', payload: updatedZone });
     addNotification(`Zona de entrega "${zone.name}" actualizada`, 'success');
     
-    // Emit specific event for delivery zone update
-    const event = new CustomEvent('admin_state_change', {
+    // Emitir evento específico para actualización de zona de entrega
+    const zoneUpdateEvent = new CustomEvent('admin_state_change', {
       detail: { 
         type: 'delivery_zone_update',
         data: updatedZone,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        action: 'update',
+        category: 'deliveryZones'
       }
     });
-    window.dispatchEvent(event);
+    window.dispatchEvent(zoneUpdateEvent);
+    
+    // Forzar sincronización inmediata
+    setTimeout(() => {
+      realTimeSyncService.forceSyncDeliveryZones();
+    }, 100);
   };
 
   const deleteDeliveryZone = (id: number) => {
@@ -440,30 +492,44 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
       addNotification(`Zona de entrega "${zone.name}" eliminada`, 'info');
     }
     
-    // Emit specific event for delivery zone deletion
-    const event = new CustomEvent('admin_state_change', {
+    // Emitir evento específico para eliminación de zona de entrega
+    const zoneDeleteEvent = new CustomEvent('admin_state_change', {
       detail: { 
         type: 'delivery_zone_delete',
-        data: { id },
-        timestamp: new Date().toISOString()
+        data: { id, zone },
+        timestamp: new Date().toISOString(),
+        action: 'delete',
+        category: 'deliveryZones'
       }
     });
-    window.dispatchEvent(event);
+    window.dispatchEvent(zoneDeleteEvent);
+    
+    // Forzar sincronización inmediata
+    setTimeout(() => {
+      realTimeSyncService.forceSyncDeliveryZones();
+    }, 100);
   };
 
   const updatePrices = (prices: Prices) => {
     dispatch({ type: 'UPDATE_PRICES', payload: prices });
     addNotification('Precios actualizados correctamente', 'success');
     
-    // Emit specific event for price update
-    const event = new CustomEvent('admin_state_change', {
+    // Emitir evento específico para actualización de precios
+    const priceUpdateEvent = new CustomEvent('admin_state_change', {
       detail: { 
         type: 'prices',
         data: prices,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        action: 'update',
+        category: 'prices'
       }
     });
-    window.dispatchEvent(event);
+    window.dispatchEvent(priceUpdateEvent);
+    
+    // Forzar sincronización inmediata de precios
+    setTimeout(() => {
+      realTimeSyncService.forceSyncPrices();
+    }, 100);
   };
 
   const addNotification = (message: string, type: Notification['type']) => {

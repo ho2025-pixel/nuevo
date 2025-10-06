@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { Search, Filter } from 'lucide-react';
 import { tmdbService } from '../services/tmdb';
 import { useAdmin } from '../context/AdminContext';
+import { useRealTimeSync } from '../utils/realTimeSync';
 import { performanceOptimizer } from '../utils/performance';
 import { MovieCard } from '../components/MovieCard';
 import { NovelCard } from '../components/NovelCard';
@@ -15,6 +16,7 @@ type SearchType = 'all' | 'movie' | 'tv';
 export function SearchPage() {
   const [searchParams] = useSearchParams();
   const { state: adminState } = useAdmin();
+  const { forceSyncNovels } = useRealTimeSync();
   const [results, setResults] = useState<(Movie | TVShow)[]>([]);
   const [novelResults, setNovelResults] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -23,8 +25,36 @@ export function SearchPage() {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [totalResults, setTotalResults] = useState(0);
+  const [novelsLastUpdate, setNovelsLastUpdate] = useState<Date>(new Date());
 
   const query = searchParams.get('q') || '';
+
+  // Escuchar actualizaciones de novelas en tiempo real para búsqueda
+  useEffect(() => {
+    const handleNovelsUpdate = () => {
+      console.log('🔄 Novels updated, refreshing search results...');
+      setNovelsLastUpdate(new Date());
+      
+      // Re-ejecutar búsqueda si hay query
+      if (query) {
+        performSearch(query, searchType, 1, false);
+      }
+    };
+
+    window.addEventListener('home_novels_update', handleNovelsUpdate);
+    window.addEventListener('real_time_full_sync', handleNovelsUpdate);
+    window.addEventListener('admin_state_change', (event: any) => {
+      if (event.detail.category === 'novels' || event.detail.type?.includes('novel')) {
+        handleNovelsUpdate();
+      }
+    });
+
+    return () => {
+      window.removeEventListener('home_novels_update', handleNovelsUpdate);
+      window.removeEventListener('real_time_full_sync', handleNovelsUpdate);
+      window.removeEventListener('admin_state_change', handleNovelsUpdate);
+    };
+  }, [query, searchType]);
 
   const searchTypeLabels = {
     all: 'Todo',
@@ -38,13 +68,14 @@ export function SearchPage() {
     try {
       if (!append) setLoading(true);
       
-      // Search novels first
+      // Buscar novelas primero con datos actualizados
       const novelMatches = adminState.novels?.filter(novel =>
         novel.titulo.toLowerCase().includes(searchQuery.toLowerCase()) ||
         novel.genero.toLowerCase().includes(searchQuery.toLowerCase()) ||
         (novel.pais && novel.pais.toLowerCase().includes(searchQuery.toLowerCase()))
       ) || [];
       
+      console.log(`🔄 Found ${novelMatches.length} novel matches for "${searchQuery}"`);
       setNovelResults(novelMatches);
       
       let response;

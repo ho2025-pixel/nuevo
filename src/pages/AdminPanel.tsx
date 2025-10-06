@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Settings, DollarSign, MapPin, BookOpen, Bell, Download, Upload, Trash2, CreditCard as Edit, Plus, Save, X, Eye, EyeOff, LogOut, Home, Monitor, Smartphone, Globe, Calendar, Image, Camera, Check, AlertCircle, Info, RefreshCw, Database, FolderSync as Sync, Activity, TrendingUp, Users, ShoppingCart, Clock, Zap, Heart, Star, PackageOpen } from 'lucide-react';
 import { useAdmin } from '../context/AdminContext';
+import { useRealTimeSync } from '../utils/realTimeSync';
 import { generateCompleteSourceCode } from '../utils/sourceCodeGenerator';
 
 interface NovelForm {
@@ -41,6 +42,7 @@ export function AdminPanel() {
     getAvailableCountries
   } = useAdmin();
 
+  const { lastUpdate, isOnline, forceSyncNovels, forceSyncPrices, forceSyncDeliveryZones } = useRealTimeSync();
   const [loginForm, setLoginForm] = useState({ username: '', password: '' });
   const [activeTab, setActiveTab] = useState<'novels' | 'zones' | 'prices' | 'notifications' | 'system'>('novels');
   const [novelForm, setNovelForm] = useState<NovelForm>({
@@ -60,6 +62,15 @@ export function AdminPanel() {
   const [showZoneForm, setShowZoneForm] = useState(false);
   const [importData, setImportData] = useState('');
   const [showImportModal, setShowImportModal] = useState(false);
+  const [syncStatus, setSyncStatus] = useState<{
+    novels: Date;
+    prices: Date;
+    zones: Date;
+  }>({
+    novels: new Date(),
+    prices: new Date(),
+    zones: new Date()
+  });
 
   // Géneros disponibles para novelas
   const availableGenres = [
@@ -80,6 +91,27 @@ export function AdminPanel() {
 
   // Real-time sync effect
   useEffect(() => {
+    // Escuchar eventos de sincronización
+    const handleSyncComplete = (event: CustomEvent) => {
+      console.log('🔄 Sync complete in admin panel:', event.detail);
+      setSyncStatus(prev => ({
+        ...prev,
+        novels: new Date(),
+        prices: new Date(),
+        zones: new Date()
+      }));
+    };
+
+    const handleSpecificSync = (event: CustomEvent) => {
+      const { category } = event.detail;
+      if (category) {
+        setSyncStatus(prev => ({
+          ...prev,
+          [category]: new Date()
+        }));
+      }
+    };
+
     const handleVisibilityChange = () => {
       if (!document.hidden && state.isAuthenticated) {
         // Refresh data when tab becomes visible
@@ -87,11 +119,23 @@ export function AdminPanel() {
           detail: { timestamp: new Date().toISOString() }
         });
         window.dispatchEvent(event);
+        
+        // Forzar sincronización de todos los datos
+        forceSyncNovels();
+        forceSyncPrices();
+        forceSyncDeliveryZones();
       }
     };
 
+    window.addEventListener('admin_sync_complete', handleSyncComplete as EventListener);
+    window.addEventListener('admin_state_change', handleSpecificSync as EventListener);
     document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      window.removeEventListener('admin_sync_complete', handleSyncComplete as EventListener);
+      window.removeEventListener('admin_state_change', handleSpecificSync as EventListener);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, [state.isAuthenticated]);
 
   const handleLogin = (e: React.FormEvent) => {
@@ -229,20 +273,33 @@ export function AdminPanel() {
 
   const handleFullBackupExport = async () => {
     try {
-      addNotification('Generando backup completo del sistema...', 'info');
+      addNotification('Generando backup completo con configuración aplicada...', 'info');
 
       const fullSystemConfig = {
         version: state.systemConfig.version,
+        backupType: 'FULL_SYSTEM_BACKUP_WITH_APPLIED_CONFIG',
+        exportTimestamp: new Date().toISOString(),
+        realTimeSyncEnabled: true,
         prices: state.prices,
         deliveryZones: state.deliveryZones,
         novels: state.novels,
         settings: state.systemConfig,
         syncStatus: state.syncStatus,
-        exportDate: new Date().toISOString(),
+        notifications: state.notifications,
+        metadata: {
+          ...state.systemConfig.metadata,
+          lastBackupDate: new Date().toISOString(),
+          configurationApplied: true,
+          includesSourceCode: true,
+          totalNovels: state.novels.length,
+          totalDeliveryZones: state.deliveryZones.length,
+          lastSyncUpdate: lastUpdate.toISOString(),
+          systemOnline: isOnline
+        }
       };
 
       await generateCompleteSourceCode(fullSystemConfig);
-      addNotification('Backup completo generado exitosamente', 'success');
+      addNotification('Backup completo con configuración aplicada generado exitosamente', 'success');
     } catch (error) {
       console.error('Error al generar backup completo:', error);
       addNotification('Error al generar el backup completo', 'error');
@@ -381,6 +438,9 @@ export function AdminPanel() {
               <div>
                 <p className="text-blue-600 text-sm font-medium">Novelas Totales</p>
                 <p className="text-2xl font-bold text-blue-800">{state.novels.length}</p>
+                <p className="text-xs text-blue-600 mt-1">
+                  Última actualización: {syncStatus.novels.toLocaleTimeString()}
+                </p>
               </div>
               <BookOpen className="h-8 w-8 text-blue-500" />
             </div>
@@ -391,6 +451,9 @@ export function AdminPanel() {
               <div>
                 <p className="text-green-600 text-sm font-medium">Zonas de Entrega</p>
                 <p className="text-2xl font-bold text-green-800">{state.deliveryZones.length}</p>
+                <p className="text-xs text-green-600 mt-1">
+                  Última actualización: {syncStatus.zones.toLocaleTimeString()}
+                </p>
               </div>
               <MapPin className="h-8 w-8 text-green-500" />
             </div>
@@ -403,6 +466,9 @@ export function AdminPanel() {
                 <p className="text-2xl font-bold text-purple-800">
                   {state.notifications.filter(n => !n.read).length}
                 </p>
+                <p className="text-xs text-purple-600 mt-1">
+                  Sincronización: {lastUpdate.toLocaleTimeString()}
+                </p>
               </div>
               <Bell className="h-8 w-8 text-purple-500" />
             </div>
@@ -412,8 +478,11 @@ export function AdminPanel() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-orange-600 text-sm font-medium">Estado del Sistema</p>
-                <p className="text-sm font-bold text-orange-800">
-                  {state.syncStatus.isOnline ? '🟢 En Línea' : '🔴 Desconectado'}
+                <p className="text-lg font-bold text-orange-800">
+                  {isOnline ? '🟢 En Línea' : '🔴 Desconectado'}
+                </p>
+                <p className="text-xs text-orange-600 mt-1">
+                  Sync: {lastUpdate.toLocaleTimeString()}
                 </p>
               </div>
               <Activity className="h-8 w-8 text-orange-500" />
@@ -1009,16 +1078,41 @@ export function AdminPanel() {
 
                     <button
                       onClick={handleFullBackupExport}
-                      className="w-full bg-purple-600 hover:bg-purple-700 text-white px-4 py-3 rounded-lg flex items-center justify-center transition-colors shadow-lg"
+                      className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-4 py-3 rounded-lg flex items-center justify-center transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl"
                     >
                       <PackageOpen className="h-4 w-4 mr-2" />
-                      Exportar Backup Full
+                      🚀 Exportar Backup Full con Config Aplicada
                     </button>
 
-                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mt-2">
-                      <p className="text-xs text-amber-800">
+                    <div className="bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-300 rounded-xl p-4 mt-3 shadow-sm">
+                      <div className="flex items-center mb-2">
+                        <Info className="h-4 w-4 text-amber-600 mr-2" />
+                        <span className="text-sm font-bold text-amber-800">Backup Completo Avanzado</span>
+                      </div>
+                      <div className="text-xs text-amber-700 space-y-1">
+                        <p className="flex items-center">
+                          <span className="text-green-600 mr-1">✅</span>
+                          Incluye todos los archivos del sistema
+                        </p>
+                        <p className="flex items-center">
+                          <span className="text-blue-600 mr-1">🔧</span>
+                          Configuración actual aplicada en el código
+                        </p>
+                        <p className="flex items-center">
+                          <span className="text-purple-600 mr-1">🔄</span>
+                          Sincronización en tiempo real habilitada
+                        </p>
+                        <p className="flex items-center">
+                          <span className="text-orange-600 mr-1">📊</span>
+                          Estadísticas y metadatos incluidos
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg p-3 mt-2">
+                      <p className="text-xs text-green-800 text-center font-medium">
                         <Info className="h-3 w-3 inline mr-1" />
-                        El Backup Full incluye todos los archivos del sistema con la configuración aplicada
+                        Estado actual: {state.novels.length} novelas, {state.deliveryZones.length} zonas, precios sincronizados
                       </p>
                     </div>
                   </div>

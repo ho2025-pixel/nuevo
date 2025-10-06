@@ -1,6 +1,7 @@
 import React from 'react';
 import { DollarSign, Tv, Film, Star, CreditCard } from 'lucide-react';
 import { useCart } from '../context/CartContext';
+import { useRealTimeSync } from '../utils/realTimeSync';
 
 interface PriceCardProps {
   type: 'movie' | 'tv';
@@ -11,7 +12,25 @@ interface PriceCardProps {
 
 export function PriceCard({ type, selectedSeasons = [], episodeCount = 0, isAnime = false }: PriceCardProps) {
   const { getCurrentPrices } = useCart();
+  const { lastUpdate } = useRealTimeSync();
   const currentPrices = getCurrentPrices();
+  const [pricesLastUpdate, setPricesLastUpdate] = React.useState<Date>(new Date());
+  
+  // Escuchar actualizaciones de precios en tiempo real
+  React.useEffect(() => {
+    const handlePricesUpdate = () => {
+      console.log('🔄 Prices updated in PriceCard');
+      setPricesLastUpdate(new Date());
+    };
+
+    window.addEventListener('prices_update', handlePricesUpdate);
+    window.addEventListener('real_time_full_sync', handlePricesUpdate);
+    
+    return () => {
+      window.removeEventListener('prices_update', handlePricesUpdate);
+      window.removeEventListener('real_time_full_sync', handlePricesUpdate);
+    };
+  }, []);
   
   const moviePrice = currentPrices.moviePrice;
   const seriesPrice = currentPrices.seriesPrice;
@@ -52,6 +71,13 @@ export function PriceCard({ type, selectedSeasons = [], episodeCount = 0, isAnim
         ? 'bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 border-amber-300' 
         : 'bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50 border-green-300'
     }`}>
+      {/* Indicador de sincronización en tiempo real */}
+      <div className="mb-3 text-center">
+        <span className="inline-flex items-center bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-medium">
+          🔄 Precios sincronizados: {pricesLastUpdate.toLocaleTimeString()}
+        </span>
+      </div>
+      
       {/* Extended series information banner */}
       {isExtendedSeries && (
         <div className="mb-4 p-4 bg-gradient-to-r from-amber-100 to-orange-100 rounded-xl border-2 border-amber-300 shadow-lg">
