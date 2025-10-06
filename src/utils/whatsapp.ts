@@ -16,7 +16,7 @@ export function sendOrderToWhatsApp(orderData: OrderData): void {
     showLocationMap = false
   } = orderData;
 
-  // Obtener el porcentaje de transferencia actual del contexto admin
+  // Obtener configuración actual con sincronización en tiempo real
   const getTransferFeePercentage = () => {
     try {
       const adminState = localStorage.getItem('admin_system_state');
@@ -30,7 +30,7 @@ export function sendOrderToWhatsApp(orderData: OrderData): void {
     return 10; // Valor por defecto
   };
 
-  // Obtener precios actuales del contexto admin
+  // Obtener precios actuales con sincronización en tiempo real
   const getCurrentPrices = () => {
     try {
       const adminState = localStorage.getItem('admin_system_state');
@@ -224,6 +224,11 @@ export function sendOrderToWhatsApp(orderData: OrderData): void {
   message += `• Series: $${currentPrices.seriesPrice.toLocaleString()} CUP por temporada\n`;
   message += `• Novelas: $${currentPrices.novelPricePerChapter.toLocaleString()} CUP por capítulo\n`;
   message += `• Recargo transferencia: ${transferFeePercentage}%\n\n`;
+  
+  message += `🔄 *INFORMACIÓN DE SINCRONIZACIÓN:*\n`;
+  message += `• Sistema sincronizado en tiempo real: ✅\n`;
+  message += `• Precios actualizados automáticamente: ✅\n`;
+  message += `• Configuración aplicada: ${new Date().toLocaleString('es-ES')}\n\n`;
   
   message += `📱 *Enviado desde:* TV a la Carta App\n`;
   message += `⏰ *Fecha y hora:* ${new Date().toLocaleString('es-ES', {

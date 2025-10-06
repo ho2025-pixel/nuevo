@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { ShoppingCart, Trash2, Star, Calendar, MessageCircle, ArrowLeft, CreditCard as Edit3, Monitor, DollarSign, CreditCard, Calculator, Sparkles, Zap, Heart, Check, X, Clapperboard, Send, BookOpen } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { AdminContext } from '../context/AdminContext';
+import { useRealTimeSync } from '../utils/realTimeSync';
 import { PriceCard } from '../components/PriceCard';
 import { CheckoutModal, OrderData, CustomerInfo } from '../components/CheckoutModal';
 import { NovelasModal } from '../components/NovelasModal';
@@ -13,8 +14,27 @@ import type { NovelCartItem } from '../types/movie';
 export function Cart() {
   const { state, removeItem, clearCart, updatePaymentType, calculateItemPrice, calculateTotalPrice, calculateTotalByPaymentType } = useCart();
   const adminContext = React.useContext(AdminContext);
+  const { lastUpdate, forceSyncPrices } = useRealTimeSync();
   const [showCheckoutModal, setShowCheckoutModal] = React.useState(false);
   const [showNovelasModal, setShowNovelasModal] = React.useState(false);
+  const [cartLastUpdate, setCartLastUpdate] = React.useState<Date>(new Date());
+
+  // Escuchar actualizaciones de precios en tiempo real
+  React.useEffect(() => {
+    const handlePricesUpdate = () => {
+      console.log('🔄 Prices updated in cart, recalculating...');
+      setCartLastUpdate(new Date());
+      // Los precios se actualizan automáticamente a través del CartContext
+    };
+
+    window.addEventListener('prices_update', handlePricesUpdate);
+    window.addEventListener('real_time_full_sync', handlePricesUpdate);
+    
+    return () => {
+      window.removeEventListener('prices_update', handlePricesUpdate);
+      window.removeEventListener('real_time_full_sync', handlePricesUpdate);
+    };
+  }, []);
 
   const handleCheckout = (orderData: OrderData) => {
     // Calculate totals
@@ -395,6 +415,9 @@ export function Cart() {
               <div className="text-center sm:text-right">
                 <div className="text-2xl sm:text-3xl font-bold">${totalPrice.toLocaleString()} CUP</div>
                 <div className="text-sm opacity-90">{state.total} elementos</div>
+                <div className="text-xs opacity-75 mt-1">
+                  Precios actualizados: {cartLastUpdate.toLocaleTimeString()}
+                </div>
               </div>
             </div>
           </div>
